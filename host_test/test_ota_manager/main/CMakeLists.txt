@@ -2,6 +2,8 @@ idf_component_register(
     SRCS
         "main.cpp"
         "test_ota_manager.cpp"
+        "test_version_helper.cpp"
+        "test_manifest_parser.cpp"
     INCLUDE_DIRS
         "."
         "../../common"

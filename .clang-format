@@ -12,17 +12,6 @@ NamespaceIndentation: None
 AccessModifierOffset: -4
 ContinuationIndentWidth: 4
 ConstructorInitializerIndentWidth: 4
-SpaceAfterCStyleCast: false
-SpaceAfterTemplateKeyword: true
-SpaceBeforeAssignmentOperators: true
-SpaceBeforeParens: ControlStatements
-SpaceInEmptyParentheses: false
-SpacesBeforeTrailingComments: 1
-SpacesInAngles: false
-SpacesInContainerLiterals: true
-SpacesInCStyleCastParentheses: false
-SpacesInParentheses: false
-SpacesInSquareBrackets: false
 
 # ============================================================================
 # FUNCTION AND ARGUMENT LAYOUT
@@ -40,7 +29,7 @@ AllowShortFunctionsOnASingleLine: Inline
 # POINTERS AND REFERENCES
 # ============================================================================
 # Keeps the pointer to the right: void *payload
-PointerAlignment: Right
+PointerAlignment: Left
 DerivePointerAlignment: false
 
 # ============================================================================
@@ -88,7 +77,7 @@ BraceWrapping:
 # ============================================================================
 # INCLUDE SORTING
 # ============================================================================
-SortIncludes: true
+SortIncludes: false
 IncludeCategories:
   - Regex: '^<openthread/.*/'
     Priority: 4

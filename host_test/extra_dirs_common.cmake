@@ -10,12 +10,10 @@ list(APPEND EXTRA_COMPONENT_DIRS
     "${PROJECT_ROOT}"
     "${PROJECT_ROOT}/host_test/gtest"
     "${PROJECT_ROOT}/host_test/common"
-    # "$ENV{IDF_PATH}/tools/mocks/esp_wifi"
-    # "$ENV{IDF_PATH}/tools/mocks/esp_netif"
-    # "$ENV{IDF_PATH}/tools/mocks/lwip"
-    # "$ENV{IDF_PATH}/tools/mocks/esp_timer"
-    # "$ENV{IDF_PATH}/tools/mocks/driver"
 )
+
+# Set global include path for our mocks and stubs
+include_directories("${PROJECT_ROOT}/host_test/common")
 
 # Explicitly list the components to be included in the build.
 set(COMPONENTS 

@@ -1,8 +1,8 @@
 // components/ota_manager/src/ota_manager.cpp
 #include "ota_manager.hpp"
+#include "esp_log.h"
 #include "manifest_parser.hpp"
 #include "version_helper.hpp"
-#include "esp_log.h"
 #include <iomanip>
 #include <sstream>
 
@@ -11,6 +11,7 @@ static const char* TAG = "OtaManager";
 namespace {
 static constexpr uint32_t OTA_START_BIT = 0x01;
 static constexpr uint32_t OTA_STOP_BIT = 0x02;
+static constexpr uint32_t OTA_CANCEL_BIT = 0x04;
 
 bool is_version_newer(const OtaVersion& current, const OtaVersion& manifest, bool allow_same)
 {
@@ -74,14 +75,12 @@ bool OtaManager::init(const OtaConfig& config)
         }
     }
 
-    set_cancel_requested(false);
     set_status(OtaStatus::IDLE);
     return true;
 }
 
 void OtaManager::deinit()
 {
-    set_cancel_requested(true);
     deps_.ota_session.abort();
 
     TaskHandle_t worker_handle = nullptr;
@@ -118,21 +117,14 @@ void OtaManager::deinit()
         state_mutex_ = nullptr;
     }
 
-    cancel_requested_ = false;
     status_ = OtaStatus::IDLE;
 }
 
 bool OtaManager::start_ota()
 {
-    if (should_cancel()) {
-        return false;
-    }
-
     if (get_status() != OtaStatus::IDLE && get_status() != OtaStatus::FAILED) {
         return false;
     }
-
-    set_cancel_requested(false);
 
     TaskHandle_t worker_handle = nullptr;
     if (state_mutex_ != nullptr && deps_.task_scheduler.semaphore_take(state_mutex_, portMAX_DELAY) == pdPASS) {
@@ -156,7 +148,6 @@ bool OtaManager::start_ota()
 
 void OtaManager::cancel_ota()
 {
-    set_cancel_requested(true);
     deps_.ota_session.abort();
 
     TaskHandle_t worker_handle = nullptr;
@@ -166,7 +157,7 @@ void OtaManager::cancel_ota()
     }
 
     if (worker_handle != nullptr) {
-        deps_.task_scheduler.notify_task(worker_handle, OTA_STOP_BIT, eSetBits);
+        deps_.task_scheduler.notify_task(worker_handle, OTA_CANCEL_BIT, eSetBits);
     }
 }
 
@@ -202,206 +193,260 @@ void OtaManager::rollback_and_reboot()
 
 void OtaManager::ota_task_func(void* pvParameters)
 {
-    OtaManager* manager = static_cast<OtaManager*>(pvParameters);
-    uint32_t notified_value;
-
-    while (true) {
-        if (manager->deps_.task_scheduler.task_notify_wait(0, ULONG_MAX, &notified_value, portMAX_DELAY) == pdPASS) {
-            if ((notified_value & OTA_STOP_BIT) == OTA_STOP_BIT) {
-                break;
-            }
-            if ((notified_value & OTA_START_BIT) == OTA_START_BIT) {
-                manager->ota_task();
-            }
-        }
-    }
-
-    if (manager->state_mutex_ != nullptr &&
-        manager->deps_.task_scheduler.semaphore_take(manager->state_mutex_, portMAX_DELAY) == pdPASS) {
-        manager->ota_task_handle_ = nullptr;
-        manager->deps_.task_scheduler.semaphore_give(manager->state_mutex_);
-    }
-
-    manager->signal_shutdown_done();
-    vTaskDelete(NULL);
+    OtaManager* self = static_cast<OtaManager*>(pvParameters);
+    self->ota_task();
 }
 
 void OtaManager::ota_task()
 {
-    ESP_LOGI(TAG, "Starting OTA process...");
+    uint32_t notifications = 0;
+    bool should_exit = false;
 
-    if (should_cancel()) {
-        set_status(OtaStatus::IDLE);
-        deps_.ota_session.abort();
-        return;
+    while (!should_exit) {
+        // Variable blocking: wait forever if idle/failed/pending, otherwise poll
+        TickType_t wait_time =
+            (status_ == OtaStatus::IDLE || status_ == OtaStatus::FAILED || status_ == OtaStatus::PENDING_VERIFY)
+                ? portMAX_DELAY
+                : 0;
+
+        // Peek at notifications
+        if (deps_.task_scheduler.task_notify_wait(0, 0, &notifications, wait_time) == pdPASS) {
+            if ((notifications & OTA_STOP_BIT) == OTA_STOP_BIT) {
+                deps_.ota_session.abort(); // Ensure session is closed if task stops
+                should_exit = true;
+                continue;
+            }
+
+            if ((notifications & OTA_CANCEL_BIT) == OTA_CANCEL_BIT) {
+                ESP_LOGI(TAG, "OTA cancellation requested");
+                deps_.ota_session.abort();
+                set_status(OtaStatus::IDLE);
+                // Clear the bits we just processed
+                deps_.task_scheduler.task_notify_wait(0, (OTA_CANCEL_BIT | OTA_START_BIT), &notifications, 0);
+                continue;
+            }
+
+            if ((notifications & OTA_START_BIT) == OTA_START_BIT) {
+                if (status_ == OtaStatus::IDLE || status_ == OtaStatus::FAILED) {
+                    set_status(OtaStatus::MANIFEST_FETCH);
+                }
+                // Clear the start bit
+                deps_.task_scheduler.task_notify_wait(0, OTA_START_BIT, &notifications, 0);
+            }
+        }
+
+        OtaStepResult step_res = OtaStepResult::IN_PROGRESS;
+        switch (status_) {
+        case OtaStatus::MANIFEST_FETCH:
+            step_res = handle_manifest_state();
+            if (step_res == OtaStepResult::SUCCESS) {
+                set_status(OtaStatus::VERSION_CHECK);
+            }
+            else if (step_res == OtaStepResult::FAILED) {
+                set_status(OtaStatus::FAILED);
+            }
+            break;
+
+        case OtaStatus::VERSION_CHECK:
+            step_res = handle_version_state();
+            if (step_res == OtaStepResult::SUCCESS) {
+                set_status(OtaStatus::DOWNLOADING);
+            }
+            else if (step_res == OtaStepResult::FAILED) {
+                set_status(OtaStatus::FAILED);
+            }
+            break;
+
+        case OtaStatus::DOWNLOADING:
+            step_res = handle_download_state();
+            if (step_res == OtaStepResult::SUCCESS) {
+                set_status(OtaStatus::VERIFYING);
+            }
+            else if (step_res == OtaStepResult::FAILED) {
+                set_status(OtaStatus::FAILED);
+            }
+            break;
+
+        case OtaStatus::VERIFYING:
+            step_res = handle_verification_state();
+            if (step_res == OtaStepResult::SUCCESS) {
+                set_status(OtaStatus::READY_TO_RESTART);
+            }
+            else if (step_res == OtaStepResult::FAILED) {
+                set_status(OtaStatus::FAILED);
+            }
+            break;
+
+        case OtaStatus::READY_TO_RESTART:
+            if (config_.restart_on_success) {
+                ESP_LOGI(TAG, "OTA Successful. Restarting...");
+                deps_.system.restart();
+            }
+            else {
+                set_status(OtaStatus::IDLE);
+            }
+            break;
+
+        default:
+            break;
+        }
     }
 
-    // 1. Fetch Manifest
-    set_status(OtaStatus::MANIFEST_FETCH);
+    ESP_LOGI(TAG, "OTA Task exiting.");
+
+    if (state_mutex_ != nullptr && deps_.task_scheduler.semaphore_take(state_mutex_, portMAX_DELAY) == pdPASS) {
+        ota_task_handle_ = nullptr;
+        deps_.task_scheduler.semaphore_give(state_mutex_);
+    }
+
+    signal_shutdown_done();
+    deps_.task_scheduler.delete_task(nullptr);
+}
+
+// ==================================================================================
+// Private methods
+// ==================================================================================
+
+OtaStepResult OtaManager::handle_manifest_state()
+{
     std::string manifest_content;
     if (deps_.http_client.fetch(config_.manifest_url, manifest_content) != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to fetch manifest");
-        if (!should_cancel()) {
-            set_status(OtaStatus::FAILED);
-        }
-        return;
+        ESP_LOGE(TAG, "Failed to fetch manifest from %s", config_.manifest_url.c_str());
+        return OtaStepResult::FAILED;
     }
 
-    if (should_cancel()) {
-        deps_.ota_session.abort();
-        set_status(OtaStatus::IDLE);
-        set_cancel_requested(false);
-        return;
-    }
-
-    // 2. Parse Manifest
     auto manifest_opt = deps_.manifest_parser.parse(manifest_content);
     if (!manifest_opt.has_value()) {
-        ESP_LOGE(TAG, "Failed to parse manifest");
-        set_status(OtaStatus::FAILED);
-        return;
+        ESP_LOGE(TAG, "Failed to parse manifest JSON");
+        return OtaStepResult::FAILED;
     }
-    OtaManifest manifest = manifest_opt.value();
 
-    // 3. Validate Device Type
-    if (manifest.device_type != config_.device_type) {
+    manifest_ = manifest_opt.value();
+    ESP_LOGI(
+        TAG,
+        "Manifest fetched: version %u.%u.%u for %s",
+        manifest_.version.major,
+        manifest_.version.minor,
+        manifest_.version.patch,
+        manifest_.device_type.c_str());
+    return OtaStepResult::SUCCESS;
+}
+
+OtaStepResult OtaManager::handle_version_state()
+{
+    // 1. Validate Device Type
+    if (manifest_.device_type != config_.device_type) {
         ESP_LOGE(
             TAG,
             "Device type mismatch: manifest=%s, config=%s",
-            manifest.device_type.c_str(),
+            manifest_.device_type.c_str(),
             config_.device_type.c_str());
-        set_status(OtaStatus::FAILED);
-        return;
+        return OtaStepResult::FAILED;
     }
 
-    // 4. Version Check
-    set_status(OtaStatus::VERSION_CHECK);
+    // 2. Fetch current version
     const esp_app_desc_t* running_app = deps_.system.get_running_app_desc();
     auto current_v_opt = VersionHelper::parse(running_app->version);
     if (!current_v_opt.has_value()) {
-        ESP_LOGE(TAG, "Failed to parse current version: %s", running_app->version);
-        set_status(OtaStatus::FAILED);
-        return;
+        ESP_LOGE(TAG, "Failed to parse current version string: %s", running_app->version);
+        return OtaStepResult::FAILED;
     }
 
-    if (!is_version_newer(current_v_opt.value(), manifest.version, config_.allow_same_version)) {
+    // 3. Compare versions
+    if (!is_version_newer(current_v_opt.value(), manifest_.version, config_.allow_same_version)) {
         ESP_LOGW(
             TAG,
             "Version is not newer. Current: %s, Manifest: %u.%u.%u",
             running_app->version,
-            manifest.version.major,
-            manifest.version.minor,
-            manifest.version.patch);
-        set_status(OtaStatus::FAILED);
-        return;
+            manifest_.version.major,
+            manifest_.version.minor,
+            manifest_.version.patch);
+        return OtaStepResult::FAILED;
     }
 
-    // 5. Downloading
-    set_status(OtaStatus::DOWNLOADING);
-    esp_http_client_config_t http_config = {};
-    http_config.url = manifest.firmware_url.c_str();
-    http_config.timeout_ms = config_.http_timeout_ms;
+    ESP_LOGI(TAG, "Version check passed. Proceeding with download.");
+    return OtaStepResult::SUCCESS;
+}
 
-    if (deps_.ota_session.begin(&http_config) != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to begin OTA session");
-        set_status(OtaStatus::FAILED);
-        return;
-    }
+OtaStepResult OtaManager::handle_download_state()
+{
+    // 1. Setup session if not active
+    if (!deps_.ota_session.is_active()) {
+        esp_http_client_config_t http_config = {};
+        http_config.url = manifest_.firmware_url.c_str();
+        http_config.timeout_ms = config_.http_timeout_ms;
 
-    if (should_cancel()) {
-        deps_.ota_session.abort();
-        set_status(OtaStatus::IDLE);
-        set_cancel_requested(false);
-        return;
-    }
-
-    // Double check version from image descriptor
-    esp_app_desc_t new_app_info;
-    if (deps_.ota_session.get_img_desc(&new_app_info) != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to get image descriptor");
-        deps_.ota_session.abort();
-        set_status(OtaStatus::FAILED);
-        return;
-    }
-
-    auto new_v_opt = VersionHelper::parse(new_app_info.version);
-    if (!new_v_opt.has_value() ||
-        !is_version_newer(current_v_opt.value(), new_v_opt.value(), config_.allow_same_version)) {
-        ESP_LOGE(TAG, "Image version check failed. Current: %s, Image: %s", running_app->version, new_app_info.version);
-        deps_.ota_session.abort();
-        set_status(OtaStatus::FAILED);
-        return;
-    }
-
-    esp_err_t ota_ret = ESP_OK;
-    while ((ota_ret = deps_.ota_session.perform()) == ESP_ERR_HTTPS_OTA_IN_PROGRESS) {
-        if (should_cancel()) {
-            deps_.ota_session.abort();
-            set_status(OtaStatus::IDLE);
-            set_cancel_requested(false);
-            return;
+        if (deps_.ota_session.begin(&http_config) != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to begin OTA session");
+            return OtaStepResult::FAILED;
         }
+
+        // Verify image descriptor (extra safety)
+        esp_app_desc_t new_app_info;
+        if (deps_.ota_session.get_img_desc(&new_app_info) != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to get image descriptor");
+            deps_.ota_session.abort();
+            return OtaStepResult::FAILED;
+        }
+
+        auto current_v_opt = VersionHelper::parse(deps_.system.get_running_app_desc()->version);
+        auto new_v_opt = VersionHelper::parse(new_app_info.version);
+        if (!new_v_opt.has_value() ||
+            !is_version_newer(current_v_opt.value(), new_v_opt.value(), config_.allow_same_version)) {
+            ESP_LOGE(TAG, "Image version validation failed: %s", new_app_info.version);
+            deps_.ota_session.abort();
+            return OtaStepResult::FAILED;
+        }
+        ESP_LOGI(TAG, "OTA session initialized, starting download...");
     }
 
-    if (ota_ret != ESP_OK || !deps_.ota_session.is_complete()) {
-        ESP_LOGE(TAG, "OTA download failed: %s", esp_err_to_name(ota_ret));
+    // 2. Perform one iteration of download
+    esp_err_t ret = deps_.ota_session.perform();
+
+    if (ret == ESP_ERR_HTTPS_OTA_IN_PROGRESS) {
+        return OtaStepResult::IN_PROGRESS;
+    }
+
+    if (ret != ESP_OK || !deps_.ota_session.is_complete()) {
+        ESP_LOGE(TAG, "Download failed: %s", esp_err_to_name(ret));
         deps_.ota_session.abort();
-        set_status(OtaStatus::FAILED);
-        return;
+        return OtaStepResult::FAILED;
     }
 
-    if (should_cancel()) {
-        deps_.ota_session.abort();
-        set_status(OtaStatus::IDLE);
-        set_cancel_requested(false);
-        return;
-    }
-
+    // 3. Cleanup session on success
     if (deps_.ota_session.finish() != ESP_OK) {
-        ESP_LOGE(TAG, "OTA finish failed");
-        set_status(OtaStatus::FAILED);
-        return;
+        ESP_LOGE(TAG, "Failed to finish OTA session");
+        return OtaStepResult::FAILED;
     }
 
-    // 6. Verifying Hash
-    set_status(OtaStatus::VERIFYING);
+    ESP_LOGI(TAG, "Download completed successfully");
+    return OtaStepResult::SUCCESS;
+}
+
+OtaStepResult OtaManager::handle_verification_state()
+{
     uint8_t sha256[32];
     const esp_partition_t* update_partition = deps_.system.get_update_partition();
+
+    if (update_partition == nullptr) {
+        ESP_LOGE(TAG, "Failed to get update partition");
+        return OtaStepResult::FAILED;
+    }
+
     if (deps_.system.get_partition_sha256(update_partition, sha256) != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to get partition SHA256");
-        set_status(OtaStatus::FAILED);
-        return;
+        ESP_LOGE(TAG, "Failed to calculate SHA256 for partition");
+        return OtaStepResult::FAILED;
     }
 
     std::string calculated_hash = bytes_to_hex(sha256, 32);
-    if (calculated_hash != manifest.sha256_hex) {
-        ESP_LOGE(TAG, "Hash mismatch! Calc: %s, Manifest: %s", calculated_hash.c_str(), manifest.sha256_hex.c_str());
-        set_status(OtaStatus::FAILED);
-        return;
+    if (calculated_hash != manifest_.sha256_hex) {
+        ESP_LOGE(
+            TAG, "Hash mismatch! Manifest: %s, Calculated: %s", manifest_.sha256_hex.c_str(), calculated_hash.c_str());
+        return OtaStepResult::FAILED;
     }
 
-    ESP_LOGI(TAG, "OTA Successful!");
-    set_status(OtaStatus::READY_TO_RESTART);
-
-    if (config_.restart_on_success) {
-        ESP_LOGI(TAG, "Restarting...");
-        deps_.system.restart();
-    }
-}
-
-bool OtaManager::should_cancel() const
-{
-    if (state_mutex_ == nullptr) {
-        return cancel_requested_;
-    }
-
-    if (deps_.task_scheduler.semaphore_take(state_mutex_, portMAX_DELAY) != pdPASS) {
-        return cancel_requested_;
-    }
-
-    bool cancel_requested = cancel_requested_;
-    deps_.task_scheduler.semaphore_give(state_mutex_);
-    return cancel_requested;
+    ESP_LOGI(TAG, "SHA256 verification passed: %s", calculated_hash.c_str());
+    return OtaStepResult::SUCCESS;
 }
 
 void OtaManager::set_status(OtaStatus status)
@@ -413,19 +458,6 @@ void OtaManager::set_status(OtaStatus status)
 
     if (deps_.task_scheduler.semaphore_take(state_mutex_, portMAX_DELAY) == pdPASS) {
         status_ = status;
-        deps_.task_scheduler.semaphore_give(state_mutex_);
-    }
-}
-
-void OtaManager::set_cancel_requested(bool value)
-{
-    if (state_mutex_ == nullptr) {
-        cancel_requested_ = value;
-        return;
-    }
-
-    if (deps_.task_scheduler.semaphore_take(state_mutex_, portMAX_DELAY) == pdPASS) {
-        cancel_requested_ = value;
         deps_.task_scheduler.semaphore_give(state_mutex_);
     }
 }

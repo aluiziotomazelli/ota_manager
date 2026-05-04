@@ -1,3 +1,11 @@
+set(component_requires "")
+if(NOT IDF_TARGET STREQUAL "linux")
+    list(APPEND component_requires 
+        esp_https_ota
+        app_update
+    )
+endif()
+
 idf_component_register(
     SRCS
         "src/ota_manager.cpp"
@@ -9,8 +17,7 @@ idf_component_register(
         "include"
     
     REQUIRES
-        esp_https_ota
-        app_update
+        ${component_requires}
         
     PRIV_REQUIRES
         json
