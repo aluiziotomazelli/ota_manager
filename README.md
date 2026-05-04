@@ -20,4 +20,4 @@ This component follows a domain-oriented HAL (Hardware Abstraction Layer) archit
 
 ## How to Test
 
-Tests are located in `host_test/test_water_tank/` (or similar depending on the integration). Use GTest and Google Mock to verify the `OtaManager` orchestration logic by injecting mocks for the HAL interfaces.
+Tests are located in `host_test` (or similar depending on the integration). Use GTest and Google Mock to verify the `OtaManager` orchestration logic by injecting mocks for the HAL interfaces.
