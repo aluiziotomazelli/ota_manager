@@ -47,6 +47,16 @@ public:
     bool confirm_app_valid() override;
     void rollback_and_reboot() override;
 
+protected:
+    OtaStepResult handle_manifest_state();
+    OtaStepResult handle_version_state();
+    OtaStepResult handle_download_state();
+    OtaStepResult handle_verification_state();
+
+    void set_status(OtaStatus status);
+
+    OtaManifest& get_manifest_ref() { return manifest_; }
+
 private:
     OtaDependencies deps_;
     OtaConfig config_;
@@ -60,12 +70,6 @@ private:
     static void ota_task_func(void* pvParameters);
     void ota_task();
 
-    OtaStepResult handle_manifest_state();
-    OtaStepResult handle_version_state();
-    OtaStepResult handle_download_state();
-    OtaStepResult handle_verification_state();
-
     // Helper methods
-    void set_status(OtaStatus status);
     void signal_shutdown_done();
 };

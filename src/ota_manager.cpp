@@ -50,7 +50,7 @@ OtaManager::OtaManager(const OtaDependencies& deps, const OtaConfig& config)
 
 OtaManager::~OtaManager()
 {
-    deinit();
+    // deinit();
 }
 
 bool OtaManager::init(const OtaConfig& config)
@@ -281,6 +281,7 @@ void OtaManager::ota_task()
             if (config_.restart_on_success) {
                 ESP_LOGI(TAG, "OTA Successful. Restarting...");
                 deps_.system.restart();
+                should_exit = true;
             }
             else {
                 set_status(OtaStatus::IDLE);
@@ -378,6 +379,7 @@ OtaStepResult OtaManager::handle_download_state()
 
         if (deps_.ota_session.begin(&http_config) != ESP_OK) {
             ESP_LOGE(TAG, "Failed to begin OTA session");
+            deps_.ota_session.abort();
             return OtaStepResult::FAILED;
         }
 
