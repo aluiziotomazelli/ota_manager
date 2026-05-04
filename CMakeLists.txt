@@ -7,9 +7,16 @@ idf_component_register(
         "src/rollback_manager.cpp"
     INCLUDE_DIRS
         "include"
+    
     REQUIRES
         esp_https_ota
-    PRIV_REQUIRES
         app_update
+        
+    PRIV_REQUIRES
         json
 )
+
+if(IDF_TARGET STREQUAL "linux")
+    target_compile_options(${COMPONENT_LIB} PUBLIC --coverage)
+    target_link_options(${COMPONENT_LIB} PUBLIC --coverage)
+endif()

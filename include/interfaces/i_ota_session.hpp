@@ -1,7 +1,7 @@
 #pragma once
 
+#include "esp_app_desc.h"
 #include "esp_err.h"
-#include "esp_https_ota.h"
 #include "esp_http_client.h"
 
 /**
@@ -13,10 +13,10 @@ public:
     virtual ~IOtaSession() = default;
 
     /** @copydoc esp_https_ota_begin() */
-    virtual esp_err_t begin(const esp_http_client_config_t* config) = 0;
+    virtual esp_err_t begin(const esp_http_client_config_t *config) = 0;
 
     /** @copydoc esp_https_ota_get_img_desc() */
-    virtual esp_err_t get_img_desc(esp_app_desc_t* new_app_info) = 0;
+    virtual esp_err_t get_img_desc(esp_app_desc_t *new_app_info) = 0;
 
     /** @copydoc esp_https_ota_perform() */
     virtual esp_err_t perform() = 0;

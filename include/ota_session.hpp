@@ -1,5 +1,7 @@
+// src/ota_session.hpp
 #pragma once
 
+#include "esp_https_ota.h"
 #include "interfaces/i_ota_session.hpp"
 
 /**
@@ -9,10 +11,10 @@ class OtaSession : public IOtaSession
 {
 public:
     /** @copydoc IOtaSession::begin */
-    esp_err_t begin(const esp_http_client_config_t* config) override;
+    esp_err_t begin(const esp_http_client_config_t *config) override;
 
     /** @copydoc IOtaSession::get_img_desc */
-    esp_err_t get_img_desc(esp_app_desc_t* new_app_info) override;
+    esp_err_t get_img_desc(esp_app_desc_t *new_app_info) override;
 
     /** @copydoc IOtaSession::perform */
     esp_err_t perform() override;

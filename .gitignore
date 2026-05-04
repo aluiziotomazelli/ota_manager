@@ -1,0 +1,50 @@
+# Build directories
+**/build/
+**/build_*/
+**/.cmake/
+**/sdkconfig
+**/sdkconfig.old
+**/compile_commands.json
+
+# Build artifacts
+dist/
+
+# IDE files
+**/.vscode/
+**/.idea/
+**/*.swp
+**/*.swo
+
+# System files
+.DS_Store
+Thumbs.db
+
+# ESP-IDF specific
+**/managed_components/
+**/dependencies.lock
+**/flash_app_args
+**/flash_project_args
+**/config/sdkconfig.json
+
+# App
+*.bak
+.clangd
+**/.cache/
+*.log
+**/secrets.h
+**/secrets.hpp
+
+#tests
+**/__pycache__/
+*.pyc
+**/coverage/**
+
+#agents
+**/.gemini/
+GEMINI.md
+AGENTS.md
+**/.agents/
+
+#TODO folder
+**/todo/
+
