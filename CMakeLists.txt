@@ -13,6 +13,7 @@ idf_component_register(
         "src/http_client.cpp"
         "src/ota_session.cpp"
         "src/rollback_manager.cpp"
+        "src/version_helper.cpp"
     INCLUDE_DIRS
         "include"
     

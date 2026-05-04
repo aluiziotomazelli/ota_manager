@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(espnow_manager_host_tests NONE)
+project(ota_manager_host_tests NONE)
 
 # Enable CTest for this project
 include(CTest)
@@ -19,9 +19,9 @@ set(UNIFIED_COVERAGE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/coverage")
 # This target aggregates coverage data (.gcda files) from all test build directories
 add_custom_target(unified_coverage
     COMMAND ${LCOV_PATH} --capture --directory .. --output-file unified_coverage.info --rc branch_coverage=1 --rc geninfo_unexecuted_blocks=1 --ignore-errors mismatch,inconsistent
-    COMMAND ${LCOV_PATH} --extract unified_coverage.info "*/espnow_manager/src/*" --output-file unified_coverage_filtered.info --rc branch_coverage=1 --ignore-errors mismatch,inconsistent,unused,empty
-    COMMAND ${LCOV_PATH} --remove unified_coverage_filtered.info "*/espnow_manager/include/interfaces/*" --output-file unified_coverage_filtered.info --rc branch_coverage=1 --ignore-errors mismatch,inconsistent,unused,empty
-    COMMAND ${GENHTML_PATH} unified_coverage_filtered.info --output-directory ${UNIFIED_COVERAGE_DIR} --title "ESP-NOW Manager Unified Coverage" --rc branch_coverage=1 --ignore-errors mismatch,inconsistent,unused
+    COMMAND ${LCOV_PATH} --extract unified_coverage.info "*/ota_manager/src/*" --output-file unified_coverage_filtered.info --rc branch_coverage=1 --ignore-errors mismatch,inconsistent,unused,empty
+    COMMAND ${LCOV_PATH} --remove unified_coverage_filtered.info "*/ota_manager/include/interfaces/*" --output-file unified_coverage_filtered.info --rc branch_coverage=1 --ignore-errors mismatch,inconsistent,unused,empty
+    COMMAND ${GENHTML_PATH} unified_coverage_filtered.info --output-directory ${UNIFIED_COVERAGE_DIR} --title "OTA Manager Unified Coverage" --rc branch_coverage=1 --ignore-errors mismatch,inconsistent,unused
     COMMAND ${LCOV_PATH} --list unified_coverage_filtered.info --rc branch_coverage=1 --ignore-errors mismatch,inconsistent,unused,empty
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     COMMENT "Generating unified coverage report from all host tests"
