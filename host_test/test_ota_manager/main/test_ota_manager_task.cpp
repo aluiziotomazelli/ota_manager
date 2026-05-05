@@ -84,6 +84,34 @@ protected:
         manifest.firmware_url = "http://link.to/bin";
         return {json, manifest};
     }
+
+    void setup_success_mocks(const std::string& manifest_json, const OtaManifest& manifest, const esp_app_desc_t& running_app)
+    {
+        EXPECT_CALL(mock_http_client, fetch(config.manifest_url, _))
+            .WillRepeatedly(DoAll(SetArgReferee<1>(manifest_json), Return(ESP_OK)));
+
+        EXPECT_CALL(mock_manifest_parser, parse(manifest_json)).WillRepeatedly(Return(manifest));
+        EXPECT_CALL(mock_system, get_running_app_desc()).WillRepeatedly(Return(&running_app));
+        EXPECT_CALL(mock_ota_session, is_active()).WillRepeatedly(Return(true));
+        EXPECT_CALL(mock_ota_session, begin(_)).WillRepeatedly(Return(ESP_OK));
+        EXPECT_CALL(mock_ota_session, perform()).WillRepeatedly(Return(ESP_OK));
+        EXPECT_CALL(mock_ota_session, is_complete()).WillRepeatedly(Return(true));
+        EXPECT_CALL(mock_ota_session, finish()).WillRepeatedly(Return(ESP_OK));
+        
+        const esp_partition_t fake_partition = {};
+        EXPECT_CALL(mock_system, get_update_partition()).WillRepeatedly(Return(&fake_partition));
+        EXPECT_CALL(mock_system, get_partition_sha256(&fake_partition, _)).WillRepeatedly(Return(ESP_OK));
+    }
+
+    void wait_for_status(OtaStatus expected_status, int timeout_ms)
+    {
+        int elapsed_ms = 0;
+        while (sut.get_status() != expected_status && elapsed_ms < timeout_ms) {
+            vTaskDelay(pdMS_TO_TICKS(10));
+            elapsed_ms += 10;
+        }
+        EXPECT_EQ(sut.get_status(), expected_status);
+    }
 };
 
 // ====================================================================
