@@ -142,7 +142,22 @@ Create a `manifest.json` based on the following template:
 }
 ```
 
-### 2. Hosting Files
+### 2. How to Set Firmware Version
+
+The `version` in the manifest must match the version "stamped" into your firmware binary. You can set your application version in one of three ways:
+
+- **Option A: `version.txt` file (easiest)**: Create a file named `version.txt` in your project root with the version string:
+  ```text
+  1.1.0
+  ```
+- **Option B: `CMakeLists.txt`**: Set the `PROJECT_VER` variable before including `project.cmake`:
+  ```cmake
+  set(PROJECT_VER "1.1.0")
+  include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+  ```
+- **Option C: Git Tags**: If your project is a Git repository, ESP-IDF will automatically use `git describe --always --tags --dirty` as the version string.
+
+### 3. Hosting Files
 
 You can use a simple Python HTTP server to host the files:
 
