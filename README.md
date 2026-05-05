@@ -4,7 +4,7 @@
 [![Host Tests](https://github.com/aluiziotomazelli/ota_manager/actions/workflows/host_test.yml/badge.svg)](https://github.com/aluiziotomazelli/ota_manager/actions/workflows/host_test.yml)
 [![Coverage](https://img.shields.io/badge/coverage-98%25-green)](https://aluiziotomazelli.github.io/ota_manager/index.html)
 
-> **⚠️ Security Note**
+> **Security Note**
 > This component is designed for **local network use only** and utilizes **plain HTTP** for manifest and firmware retrieval. It is intended for environments where the user has full control over the network infrastructure.
 
 A passive, dependency-injected OTA (Over-the-Air) update component designed for ESP-IDF. It provides a robust, thread-safe, and highly testable orchestration logic for firmware updates.
@@ -122,6 +122,41 @@ if (ota.check_pending_verify()) {
         ota.rollback_and_reboot();
     }
 }
+```
+
+## Local Server Setup
+
+To perform an update, the device needs access to a manifest JSON file and the firmware binary.
+
+### 1. Manifest Format
+
+Create a `manifest.json` based on the following template:
+
+```json
+{
+    "device_type": "water_tank",
+    "version": "1.1.0",
+    "firmware_url": "http://<your-server-ip>:8080/firmware.bin",
+    "firmware_size": 693312,
+    "sha256_hex": "2e3c09f3e4b52479e0f22f7783d78909d94943f338d42d3858c2794c483a992e"
+}
+```
+
+### 2. Hosting Files
+
+You can use a simple Python HTTP server to host the files:
+
+```bash
+# In the folder containing manifest.json and firmware.bin
+python3 -m http.server 8080
+```
+
+### 3. Calculating SHA-256
+
+To get the hash for your binary:
+
+```bash
+sha256sum firmware.bin
 ```
 
 ## Project Structure
