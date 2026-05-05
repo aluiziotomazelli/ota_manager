@@ -4,6 +4,9 @@
 [![Host Tests](https://github.com/aluiziotomazelli/ota_manager/actions/workflows/host_test.yml/badge.svg)](https://github.com/aluiziotomazelli/ota_manager/actions/workflows/host_test.yml)
 [![Coverage](https://img.shields.io/badge/coverage-98%25-green)](https://aluiziotomazelli.github.io/ota_manager/index.html)
 
+> **⚠️ Security Note**
+> This component is designed for **local network use only** and utilizes **plain HTTP** for manifest and firmware retrieval. It is intended for environments where the user has full control over the network infrastructure.
+
 A passive, dependency-injected OTA (Over-the-Air) update component designed for ESP-IDF. It provides a robust, thread-safe, and highly testable orchestration logic for firmware updates.
 
 ## Overview
