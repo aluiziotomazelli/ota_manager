@@ -409,7 +409,7 @@ OtaStepResult OtaManager::handle_download_state()
         return OtaStepResult::IN_PROGRESS;
     }
 
-    if (ret != ESP_OK || !deps_.ota_session.is_complete()) {
+    if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Download failed: %s", esp_err_to_name(ret));
         deps_.ota_session.abort();
         return OtaStepResult::FAILED;
@@ -435,7 +435,7 @@ OtaStepResult OtaManager::handle_verification_state()
         return OtaStepResult::FAILED;
     }
 
-    if (deps_.system.get_partition_sha256(update_partition, sha256) != ESP_OK) {
+    if (deps_.system.get_partition_sha256(update_partition, manifest_.firmware_size, sha256) != ESP_OK) {
         ESP_LOGE(TAG, "Failed to calculate SHA256 for partition");
         return OtaStepResult::FAILED;
     }
