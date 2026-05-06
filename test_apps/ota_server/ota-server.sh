@@ -7,10 +7,13 @@
 set -e  # Exit on error
 
 # ========== CONFIGURATIONS ==========
-HOSTNAME="ota-server"
-PORT=8070
+HOSTNAME_DEFAULT="ota-server"
+PORT="${OTA_PORT:-8070}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SERVER_DIR="$SCRIPT_DIR"
+
+ENABLE_MDNS=false
+CUSTOM_HOSTNAME="$HOSTNAME_DEFAULT"
 
 # Colors for output
 RED='\033[0;31m'
@@ -19,6 +22,28 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # ========== FUNCTIONS ==========
+
+restore_hostname() {
+    if [ "$ENABLE_MDNS" = true ] && [ -n "$ORIGINAL_HOSTNAME" ]; then
+        print_info "Restoring original hostname: $ORIGINAL_HOSTNAME"
+        sudo hostnamectl set-hostname "$ORIGINAL_HOSTNAME"
+        sudo systemctl restart avahi-daemon
+    fi
+}
+
+# Trap to ensure hostname is restored on exit
+trap restore_hostname EXIT
+
+parse_args() {
+    while [[ "$#" -gt 0 ]]; do
+        case $1 in
+            --mdns) ENABLE_MDNS=true ;;
+            --hostname) CUSTOM_HOSTNAME="$2"; shift ;;
+            *) print_error "Unknown option: $1"; exit 1 ;;
+        esac
+        shift
+    done
+}
 
 print_step() {
     echo -e "${GREEN}[✓]${NC} $1"
@@ -30,6 +55,18 @@ print_error() {
 
 print_info() {
     echo -e "${YELLOW}[i]${NC} $1"
+}
+
+setup_mdns() {
+    if [ "$ENABLE_MDNS" = true ]; then
+        check_avahi
+        ORIGINAL_HOSTNAME=$(hostnamectl --static)
+        print_info "Current hostname: $ORIGINAL_HOSTNAME"
+        print_info "Setting hostname to: $CUSTOM_HOSTNAME"
+        sudo hostnamectl set-hostname "$CUSTOM_HOSTNAME"
+        sudo systemctl restart avahi-daemon
+        print_step "Hostname configured: $CUSTOM_HOSTNAME"
+    fi
 }
 
 check_avahi() {
@@ -151,11 +188,10 @@ case "${1:-start}" in
         ;;
     
     start)
+        shift # Consome o 'start'
+        parse_args "$@"
         print_info "=== Starting OTA Server ==="
-        check_avahi
-        setup_hostname
-        check_server_dir
-        list_firmwares
+        setup_mdns
         check_port
         start_server
         ;;
