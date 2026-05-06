@@ -3,8 +3,10 @@
 
 std::optional<OtaVersion> VersionHelper::parse(const std::string& version_str)
 {
-    // Regex to find X.Y.Z pattern in string
-    std::regex version_regex(R"((\d+)\.(\d+)\.(\d+))");
+    // Regex to find X.Y.Z pattern at the start of the string.
+    // Supports an optional 'v' prefix.
+    // The negative lookahead (?!\.\d) ensures we don't match if there's a fourth numeric component.
+    std::regex version_regex(R"(^v?(\d+)\.(\d+)\.(\d+)(?!\.\d))");
     std::smatch match;
 
     if (std::regex_search(version_str, match, version_regex)) {

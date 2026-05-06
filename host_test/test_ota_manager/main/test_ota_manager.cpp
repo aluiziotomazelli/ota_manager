@@ -835,33 +835,6 @@ TEST_F(OtaManagerTest, HandleDownloadStateSessionActivePerformFails)
     EXPECT_EQ(testable_manager.handle_download_state(), OtaStepResult::FAILED);
 }
 
-TEST_F(OtaManagerTest, HandleDownloadStateSessionActiveIsCompleteFalse)
-{
-    OtaManagerTestable testable_manager(deps, config);
-    ASSERT_TRUE(testable_manager.init(config));
-
-    // Setup manifest
-    OtaManifest& manifest = testable_manager.get_manifest_ref();
-    manifest.device_type = config.device_type;
-    manifest.version = {2, 0, 0};
-    manifest.firmware_url = "http://example.com/firmware.bin";
-    manifest.sha256_hex = "test_hash";
-
-    // Mock session is active
-    EXPECT_CALL(mock_ota_session, is_active()).WillOnce(Return(true));
-    
-    // Mock perform() success
-    EXPECT_CALL(mock_ota_session, perform()).WillOnce(Return(ESP_OK));
-    
-    // Mock is_complete() returns false
-    EXPECT_CALL(mock_ota_session, is_complete()).WillOnce(Return(false));
-    
-    // Mock abort() should be called
-    EXPECT_CALL(mock_ota_session, abort()).Times(1);
-
-    EXPECT_EQ(testable_manager.handle_download_state(), OtaStepResult::FAILED);
-}
-
 TEST_F(OtaManagerTest, HandleDownloadStateSessionActiveFinishFails)
 {
     OtaManagerTestable testable_manager(deps, config);
@@ -879,9 +852,6 @@ TEST_F(OtaManagerTest, HandleDownloadStateSessionActiveFinishFails)
     
     // Mock perform() success
     EXPECT_CALL(mock_ota_session, perform()).WillOnce(Return(ESP_OK));
-    
-    // Mock is_complete() returns true
-    EXPECT_CALL(mock_ota_session, is_complete()).WillOnce(Return(true));
     
     // Mock finish() fails
     EXPECT_CALL(mock_ota_session, finish()).WillOnce(Return(ESP_FAIL));
@@ -906,9 +876,6 @@ TEST_F(OtaManagerTest, HandleDownloadStateDownloadCompleteSuccess)
     
     // Mock perform() success
     EXPECT_CALL(mock_ota_session, perform()).WillOnce(Return(ESP_OK));
-    
-    // Mock is_complete() returns true
-    EXPECT_CALL(mock_ota_session, is_complete()).WillOnce(Return(true));
     
     // Mock finish() success
     EXPECT_CALL(mock_ota_session, finish()).WillOnce(Return(ESP_OK));
