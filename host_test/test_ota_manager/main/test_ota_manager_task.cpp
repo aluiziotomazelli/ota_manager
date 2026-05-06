@@ -95,12 +95,11 @@ protected:
         EXPECT_CALL(mock_ota_session, is_active()).WillRepeatedly(Return(true));
         EXPECT_CALL(mock_ota_session, begin(_)).WillRepeatedly(Return(ESP_OK));
         EXPECT_CALL(mock_ota_session, perform()).WillRepeatedly(Return(ESP_OK));
-        EXPECT_CALL(mock_ota_session, is_complete()).WillRepeatedly(Return(true));
         EXPECT_CALL(mock_ota_session, finish()).WillRepeatedly(Return(ESP_OK));
         
         const esp_partition_t fake_partition = {};
         EXPECT_CALL(mock_system, get_update_partition()).WillRepeatedly(Return(&fake_partition));
-        EXPECT_CALL(mock_system, get_partition_sha256(&fake_partition, _)).WillRepeatedly(Return(ESP_OK));
+        EXPECT_CALL(mock_system, get_partition_sha256(&fake_partition, _, _)).WillRepeatedly(Return(ESP_OK));
     }
 
     void wait_for_status(OtaStatus expected_status, int timeout_ms)
@@ -158,7 +157,6 @@ TEST_F(OtaManagerTaskTest, FullOtaSuccessFlow)
 
     EXPECT_CALL(mock_ota_session, perform()).WillOnce(Return(ESP_OK));
 
-    EXPECT_CALL(mock_ota_session, is_complete()).WillOnce(Return(true));
 
     EXPECT_CALL(mock_ota_session, finish()).WillOnce(Return(ESP_OK));
 
@@ -168,8 +166,8 @@ TEST_F(OtaManagerTaskTest, FullOtaSuccessFlow)
                                 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31};
 
     EXPECT_CALL(mock_system, get_update_partition()).WillOnce(Return(&fake_partition));
-    EXPECT_CALL(mock_system, get_partition_sha256(&fake_partition, _))
-        .WillOnce(DoAll(SetArrayArgument<1>(expected_sha, expected_sha + 32), Return(ESP_OK)));
+    EXPECT_CALL(mock_system, get_partition_sha256(&fake_partition, _, _))
+        .WillOnce(DoAll(SetArrayArgument<2>(expected_sha, expected_sha + 32), Return(ESP_OK)));
 
     EXPECT_CALL(mock_system, restart()).Times(1);
 
@@ -323,7 +321,6 @@ TEST_F(OtaManagerTaskTest, VerificationFailsTransitionsToFailed)
     EXPECT_CALL(mock_ota_session, is_active()).WillRepeatedly(Return(true));
     EXPECT_CALL(mock_ota_session, begin(_)).WillRepeatedly(Return(ESP_OK));
     EXPECT_CALL(mock_ota_session, perform()).WillRepeatedly(Return(ESP_OK));
-    EXPECT_CALL(mock_ota_session, is_complete()).WillRepeatedly(Return(true));
     EXPECT_CALL(mock_ota_session, finish()).WillRepeatedly(Return(ESP_OK));
 
     // Simulate verification failure

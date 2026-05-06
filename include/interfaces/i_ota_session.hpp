@@ -21,9 +21,6 @@ public:
     /** @copydoc esp_https_ota_perform() */
     virtual esp_err_t perform() = 0;
 
-    /** @copydoc esp_https_ota_is_complete_data_received() */
-    virtual bool is_complete() const = 0;
-
     /** @copydoc esp_https_ota_finish() */
     virtual esp_err_t finish() = 0;
 

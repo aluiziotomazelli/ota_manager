@@ -19,9 +19,6 @@ public:
     /** @copydoc IOtaSession::perform */
     esp_err_t perform() override;
 
-    /** @copydoc IOtaSession::is_complete */
-    bool is_complete() const override;
-
     /** @copydoc IOtaSession::finish */
     esp_err_t finish() override;
 

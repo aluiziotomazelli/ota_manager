@@ -37,15 +37,6 @@ esp_err_t OtaSession::perform()
     return esp_https_ota_perform(ota_handle_);
 }
 
-bool OtaSession::is_complete() const
-{
-    if (ota_handle_ == nullptr) {
-        return false;
-    }
-
-    return esp_https_ota_is_complete_data_received(ota_handle_) == ESP_OK;
-}
-
 esp_err_t OtaSession::finish()
 {
     if (ota_handle_ == nullptr) {

@@ -20,7 +20,6 @@ typedef void* esp_https_ota_handle_t;
 esp_err_t esp_https_ota_begin(const esp_https_ota_config_t *ota_config, esp_https_ota_handle_t *handle);
 esp_err_t esp_https_ota_get_img_desc(esp_https_ota_handle_t ota_handle, esp_app_desc_t *new_app_info);
 esp_err_t esp_https_ota_perform(esp_https_ota_handle_t ota_handle);
-esp_err_t esp_https_ota_is_complete_data_received(esp_https_ota_handle_t ota_handle);
 esp_err_t esp_https_ota_finish(esp_https_ota_handle_t ota_handle);
 esp_err_t esp_https_ota_abort(esp_https_ota_handle_t ota_handle);
 
