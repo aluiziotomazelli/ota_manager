@@ -13,30 +13,48 @@ This directory contains the tools to manage and serve OTA updates for ESP32 devi
 
 ### 1. Deploying a New Firmware
 
-When you have a compiled `.bin` file, use the `deploy` command to organize it into the repository and update the device's manifest.
+The `deploy` command organizes the binary into the repository and updates the device's manifest. By default, it automatically detects the device type and version from the binary using `esptool.py`, and resolves your local IP for the manifest URL.
 
+**Basic Usage (Zero Config):**
 ```bash
-python3 manage.py deploy <device_type> <version> <path_to_bin>
+python3 manage.py deploy <path_to_bin>
 ```
 
-**Example:**
+**Advanced Usage (Manual Override):**
 ```bash
-python3 manage.py deploy central_hub 1.1.0 ../scenarios/v1.1.0_success/build/ota_test_v110.bin
+python3 manage.py deploy <path_to_bin> --device app_hub --version 1.2.0 --host ota-server.local
 ```
 
 This command will:
-- Calculate the SHA-256 hash of the binary.
-- Create the directory `repository/central_hub/1.1.0/`.
-- Copy the binary to that directory.
-- Update `manifests/central_hub.json` with the new version, size, hash, and relative URL.
+- **Auto-Detect**: Extract Project Name and Version from the binary metadata.
+- **Auto-IP**: Resolve your local network IP (or use `--host` / `OTA_HOSTNAME`).
+- **Organize**: Create `repository/<device>/<version>/` and copy the binary.
+- **Manifest**: Generate `manifests/<device>.json` with the correct SHA-256 and absolute URL.
 
-### 2. Starting the Server
+### 2. Network Configuration
+
+The script builds the `firmware_url` dynamically. It follows this priority for the host/IP:
+1.  Command line argument: `--host <value>`
+2.  Environment variable: `OTA_HOSTNAME`
+3.  Automatic detection: Local network IP (default)
+
+> **Note**: If you are using mDNS (e.g., `ota-server.local` via `ota-server.sh`), make sure to pass `--host ota-server.local` during deploy, or set `export OTA_HOSTNAME=ota-server.local` beforehand. Otherwise, the manifest will be generated with your machine's raw IP address, which may conflict with your mDNS setup.
+
+### 3. Starting the Server
 
 #### Option A: Using the Shell Script (Recommended for Linux)
-Configures `ota-server.local` via mDNS and starts the server.
+Starts the server. By default, it runs without mDNS configuration.
+
 ```bash
+# Default mode (no mDNS, uses local IP)
 ./ota-server.sh start
+
+# Enable mDNS (requires sudo, configures system hostname)
+./ota-server.sh start --mdns
 ```
+
+> **Note**: When using `--mdns`, the script will automatically change your system hostname and restore it back to the original value upon exit (via `trap` on exit or Ctrl+C). You can customize the hostname with `--hostname <name>`.
+
 
 #### Option B: Using Python directly
 Starts the server on a specific port without touching system DNS.

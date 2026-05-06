@@ -121,7 +121,7 @@ list_firmwares() {
     print_info "Available firmware structure:"
     echo ""
     cd "$SERVER_DIR"
-    tree -L 2 2>/dev/null || find . -maxdepth 2 -name "*.bin" -exec ls -lh {} \;
+    tree -L 4 2>/dev/null || find . -maxdepth 4 -name "*.bin" -exec ls -lh {} \;
     echo ""
 }
 
@@ -191,7 +191,9 @@ case "${1:-start}" in
         shift # Consome o 'start'
         parse_args "$@"
         print_info "=== Starting OTA Server ==="
+        check_server_dir
         setup_mdns
+        list_firmwares
         check_port
         start_server
         ;;
