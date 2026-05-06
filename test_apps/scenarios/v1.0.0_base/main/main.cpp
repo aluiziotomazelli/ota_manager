@@ -88,8 +88,8 @@ extern "C" void app_main(void)
         .rollback_manager = rollback_manager};
 
     OtaConfig config{
-        .device_type = "test",
-        .manifest_url = "http://localhost:8080/manifest.json",
+        .device_type = "test_ota_manager",
+        .manifest_url = SERVER_URL,
         .task_stack_size = 4096,
         .task_priority = 5,
         .http_timeout_ms = 30000,

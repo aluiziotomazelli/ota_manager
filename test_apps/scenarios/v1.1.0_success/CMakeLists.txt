@@ -12,4 +12,4 @@ list(APPEND EXTRA_COMPONENT_DIRS
 set(COMPONENTS main ota_manager)
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
-project(test_build)
+project(test_ota_manager)
