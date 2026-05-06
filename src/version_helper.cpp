@@ -3,7 +3,7 @@
 
 std::optional<OtaVersion> VersionHelper::parse(const std::string& version_str)
 {
-    // Regex para encontrar o padrão X.Y.Z na string
+    // Regex to find X.Y.Z pattern in string
     std::regex version_regex(R"((\d+)\.(\d+)\.(\d+))");
     std::smatch match;
 
@@ -16,11 +16,7 @@ std::optional<OtaVersion> VersionHelper::parse(const std::string& version_str)
             return std::nullopt;
         }
 
-        return OtaVersion{
-            static_cast<uint16_t>(major),
-            static_cast<uint16_t>(minor),
-            static_cast<uint16_t>(patch)
-        };
+        return OtaVersion{static_cast<uint16_t>(major), static_cast<uint16_t>(minor), static_cast<uint16_t>(patch)};
     }
 
     return std::nullopt;
