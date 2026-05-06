@@ -5,7 +5,7 @@
 [![Coverage](https://img.shields.io/badge/coverage-98%25-green)](https://aluiziotomazelli.github.io/ota_manager/index.html)
 
 > **Security Note**
-> This component is designed for **local network use only** and utilizes **plain HTTP** for manifest and firmware retrieval. It is intended for environments where the user has full control over the network infrastructure.
+> This component is designed for **local network use only** and utilizes **plain HTTP** for manifest and firmware retrieval. It is intended for environments where the user has full control over the network infrastructure. Because this runs only in HTTP, the `CONFIG_ESP_HTTPS_OTA_ALLOW_HTTP=y` must be enabled in `sdkconfig` via `menuconfig` to permit HTTP firmware downloads.
 
 A passive, dependency-injected OTA (Over-the-Air) update component designed for ESP-IDF. It provides a robust, thread-safe, and highly testable orchestration logic for firmware updates.
 
@@ -60,6 +60,8 @@ Unlike traditional OTA implementations, this component is **passive**: the appli
 
 - **Framework**: ESP-IDF v5.0+
 - **Language**: C++17
+- **Network**: Requires `CONFIG_ESP_HTTPS_OTA_ALLOW_HTTP=y` enabled in `sdkconfig` to permit HTTP firmware downloads.
+- **Rollback**: Requires `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y` enabled in `sdkconfig` to allow automatic firmware rollback upon failed verification.
 - **Dependencies**:
   - `cJSON` (included in ESP-IDF)
   - `esp_https_ota`
@@ -156,6 +158,8 @@ The `version` in the manifest must match the version "stamped" into your firmwar
   include($ENV{IDF_PATH}/tools/cmake/project.cmake)
   ```
 - **Option C: Git Tags**: If your project is a Git repository, ESP-IDF will automatically use `git describe --always --tags --dirty` as the version string.
+
+For more detailed instructions on how to set firmware version see [ESP-IDF Build/Project Variables](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/build-system.html#build-project-variables)
 
 ### 3. Hosting Files
 
