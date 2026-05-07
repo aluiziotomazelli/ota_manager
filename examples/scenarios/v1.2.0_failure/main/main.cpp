@@ -10,6 +10,7 @@
 #include "esp_system.h"
 
 static OtaManager* g_ota_manager = nullptr;
+static const gpio_num_t OTA_BUTTON_GPIO = GPIO_NUM_0;
 
 static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
@@ -45,11 +46,11 @@ void connect_wifi(void)
 
 void button_task(void* pvParameter)
 {
-    gpio_set_direction(GPIO_NUM_0, GPIO_MODE_INPUT);
-    gpio_set_pull_mode(GPIO_NUM_0, GPIO_PULLUP_ONLY);
+    gpio_set_direction(OTA_BUTTON_GPIO, GPIO_MODE_INPUT);
+    gpio_set_pull_mode(OTA_BUTTON_GPIO, GPIO_PULLUP_ONLY);
 
     while (true) {
-        if (gpio_get_level(GPIO_NUM_0) == 0) {
+        if (gpio_get_level(OTA_BUTTON_GPIO) == 0) {
             ESP_LOGI("button", "Button pressed, starting OTA...");
             if (g_ota_manager) {
                 g_ota_manager->start_ota();

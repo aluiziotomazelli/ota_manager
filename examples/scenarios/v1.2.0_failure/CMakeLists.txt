@@ -1,7 +1,7 @@
-# test_apps/test_build/CMakeLists.txt
+# examples/scenarios/v1.2.0_failure/CMakeLists.txt
 cmake_minimum_required(VERSION 3.16)
 
-# The project root is two levels up from test_apps/test_build
+# The project root is three levels up from examples/scenarios/v1.2.0_failure
 get_filename_component(PROJECT_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../../" ABSOLUTE)
 
 list(APPEND EXTRA_COMPONENT_DIRS

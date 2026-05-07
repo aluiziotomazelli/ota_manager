@@ -32,7 +32,9 @@ files:
     
   
 examples:
-  - path: "examples/basic_usage"
+  - path: "examples/scenarios/v1.0.0_base"
+  - path: "examples/scenarios/v1.1.0_success"
+  - path: "examples/scenarios/v1.2.0_failure"
 
 
 url: "https://github.com/aluiziotomazelli/ota_manager"

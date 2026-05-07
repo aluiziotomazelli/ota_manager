@@ -6,8 +6,8 @@ This document outlines the procedure to validate the `ota_manager` component on 
 
 1.  **Hardware**: ESP32 DevKit (or any standard ESP32 module).
 2.  **Network**: Local Wi-Fi network.
-3.  **Local Server**: A host machine (Linux/Mac/PC) running a simple HTTP server (e.g., `python3 -m http.server 8080`).
-4.  **Secrets**: A `main/include/secrets.h` file (excluded from Git) with:
+3.  **OTA Server**: A host machine running the server located in the root `/ota_server` directory.
+4.  **Secrets**: A `main/include/secrets.h` file (use `examples/scenarios/example_secrets.h` as template) with:
     ```cpp
     #define WIFI_SSID "your_ssid"
     #define WIFI_PASS "your_password"
