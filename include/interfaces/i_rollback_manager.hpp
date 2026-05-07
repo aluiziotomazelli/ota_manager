@@ -10,7 +10,7 @@ public:
     virtual ~IRollbackManager() = default;
 
     /** @brief Checks if the running application image is in the pending verification state. */
-    virtual bool is_pending_verify() = 0;
+    virtual bool is_pending_verify() const = 0;
 
     /** @brief Marks the current application image as valid, canceling any pending rollback. */
     virtual esp_err_t mark_app_valid() = 0;

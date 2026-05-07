@@ -1,7 +1,7 @@
 #include "rollback_manager.hpp"
 #include "esp_ota_ops.h"
 
-bool RollbackManager::is_pending_verify() {
+bool RollbackManager::is_pending_verify() const {
     esp_ota_img_states_t state;
     if (esp_ota_get_state_partition(esp_ota_get_running_partition(), &state) == ESP_OK) {
         return state == ESP_OTA_IMG_PENDING_VERIFY;

@@ -8,7 +8,7 @@
 class RollbackManager : public IRollbackManager {
 public:
     /** @copydoc IRollbackManager::is_pending_verify */
-    bool is_pending_verify() override;
+    bool is_pending_verify() const override;
     /** @copydoc IRollbackManager::mark_app_valid */
     esp_err_t mark_app_valid() override;
     /** @copydoc IRollbackManager::rollback_and_reboot */
