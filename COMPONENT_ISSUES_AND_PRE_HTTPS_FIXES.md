@@ -97,20 +97,30 @@ Moved the policy decision into `OtaSecurityConfig`. The new `allow_http_during_d
 
 ## 8. On-Target Validation Is Too Thin for Transport Evolution
 
-### Problem
+**Status:** Partially Addressed
 
-Host tests cover orchestration well, but they do not validate actual transport wiring, TLS behavior, or interaction with ESP-IDF HTTPS OTA internals.
+### Current Coverage
 
-### Why It Matters
+The repository now includes on-target scenario coverage for the HTTP-only phase:
 
-- HTTPS regressions will not be caught by current mocks.
-- Build-only checks are not enough for certificate handling, redirect behavior, and HTTP dev fallback.
+- `v1.1.0_success` validates the normal HTTP development flow.
+- `v1.2.0_failure` validates rollback after a bad firmware boots and is not confirmed.
+- `v1.3.0_security_failure` validates that strict security policy rejects an HTTP manifest URL immediately.
 
-### Most Efficient Fix
+This is enough for the current HTTP-only phase because it exercises the runtime policy boundary without introducing HTTPS-specific complexity too early.
 
-Add a focused on-target integration matrix before and during the HTTPS migration.
+### What Still Needs to Wait for HTTPS
 
-Recommended minimum scenarios:
+Host tests still cannot validate:
+
+- actual TLS handshake behavior
+- pinned certificate verification
+- certificate bundle configuration
+- redirect and trust-chain behavior under real transport conditions
+
+### Future HTTPS Matrix
+
+When HTTPS migration starts, add a focused on-target matrix with:
 
 1. HTTPS manifest + HTTPS firmware with pinned PEM.
 2. HTTPS manifest + HTTPS firmware with CRT bundle.
@@ -120,14 +130,16 @@ Recommended minimum scenarios:
 
 ### Preferred Outcome
 
-- Real confidence in transport behavior, not just orchestration behavior.
+- Keep the current HTTP-only scenario set focused and useful now.
+- Add HTTPS transport coverage only when it becomes relevant.
 
 ## Suggested Execution Order
 
 The most efficient order before the HTTPS migration is:
 
-1. Fix worker shutdown and resource lifetime. (IN PROGRESS)
-2. Expand on-target integration coverage. (TODO)
+1. Fix worker shutdown and resource lifetime. (DONE)
+2. Keep the current HTTP-only scenario coverage stable.
+3. Expand on-target HTTPS integration coverage when HTTPS work starts. (TODO)
 
 Resolved items:
 - Redesign transport configuration ownership. (Resolved)
@@ -144,4 +156,3 @@ The following should still be considered blocking prerequisites:
 - On-target integration coverage for transport behavior.
 
 Everything else has been resolved in the preparatory phase, significantly reducing risk before starting the HTTPS migration.
-

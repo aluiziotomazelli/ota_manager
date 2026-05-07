@@ -49,3 +49,6 @@ For detailed instructions, see the [OTA Server README](../../ota_server/README.m
 6.  **Deploy tird scenario**: Use `manage.py deploy` to host the `.bin` files from the third scenario: `v1.2.0_failure`.
 7.  **Trigger Update**: Press the **BOOT button** (GPIO 0 on ESP32/S3, GPIO 9 on C3) to initiate the OTA process.
 8.  **Observe**: Monitor the serial logs to see the OTA, when the v1.2.0 is booted and it is not confirmed, it should rollback to v1.1.0.
+9. **Build and Deploy Security Test**: Build `v1.3.0_security_failure` and host its binaries using the OTA server.
+10. **Trigger OTA**: With the device running `v1.1.0`, press the **BOOT button** to update to `v1.3.0`.
+11. **Trigger Security Test**: Once the device is running `v1.3.0`, press the **BOOT button** again. The second OTA attempt will fail immediately because `allow_http_during_development = false` and the manifest URL still uses HTTP. The failure happens before any download, during manifest URL validation.
