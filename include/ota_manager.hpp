@@ -65,11 +65,13 @@ public:
     bool init(const OtaConfig& config) override;
     
     /**
-     * @brief Cleans up resources used by the OTA manager.
+     * @brief Stops the worker task and cleans up resources used by the OTA manager.
+     *
+     * @return true if shutdown completed cleanly, false otherwise.
      * @note This method MUST be called manually before the object is destroyed
      * to ensure all background tasks are stopped and mutexes are released.
      */
-    void deinit() override;
+    bool deinit() override;
     
     /** @copydoc IOtaManager::start_ota() */
     bool start_ota() override;
@@ -168,4 +170,9 @@ private:
      * @brief Signals that the OTA task has completed shutdown.
      */
     void signal_shutdown_done();
+
+    /**
+     * @brief Finalizes worker-owned shutdown state before self-deletion.
+     */
+    void finalize_worker_shutdown();
 };

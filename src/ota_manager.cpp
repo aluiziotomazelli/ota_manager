@@ -78,9 +78,10 @@ bool OtaManager::init(const OtaConfig& config)
     return true;
 }
 
-void OtaManager::deinit()
+bool OtaManager::deinit()
 {
     deps_.ota_session.abort();
+    bool shutdown_clean = true;
 
     TaskHandle_t worker_handle = nullptr;
     if (state_mutex_ != nullptr && deps_.task_scheduler.semaphore_take(state_mutex_, portMAX_DELAY) == pdPASS) {
@@ -94,29 +95,25 @@ void OtaManager::deinit()
         if (shutdown_done_ != nullptr) {
             if (deps_.task_scheduler.semaphore_take(shutdown_done_, pdMS_TO_TICKS(1000)) != pdPASS) {
                 ESP_LOGW(TAG, "OTA worker did not stop in time");
+                shutdown_clean = false;
             }
         }
     }
 
-    if (state_mutex_ != nullptr && deps_.task_scheduler.semaphore_take(state_mutex_, portMAX_DELAY) == pdPASS) {
-        if (ota_task_handle_ != nullptr) {
-            deps_.task_scheduler.delete_task(ota_task_handle_);
-            ota_task_handle_ = nullptr;
-        }
-        deps_.task_scheduler.semaphore_give(state_mutex_);
-    }
-
-    if (shutdown_done_ != nullptr) {
+    if (shutdown_clean && shutdown_done_ != nullptr) {
         deps_.task_scheduler.semaphore_delete(shutdown_done_);
         shutdown_done_ = nullptr;
     }
 
-    if (state_mutex_ != nullptr) {
+    if (shutdown_clean && state_mutex_ != nullptr) {
         deps_.task_scheduler.semaphore_delete(state_mutex_);
         state_mutex_ = nullptr;
     }
 
-    status_ = OtaStatus::IDLE;
+    if (shutdown_clean) {
+        status_ = OtaStatus::IDLE;
+    }
+    return shutdown_clean;
 }
 
 bool OtaManager::start_ota()
@@ -291,13 +288,7 @@ void OtaManager::ota_task()
     }
 
     ESP_LOGI(TAG, "OTA Task exiting.");
-
-    if (state_mutex_ != nullptr && deps_.task_scheduler.semaphore_take(state_mutex_, portMAX_DELAY) == pdPASS) {
-        ota_task_handle_ = nullptr;
-        deps_.task_scheduler.semaphore_give(state_mutex_);
-    }
-
-    signal_shutdown_done();
+    finalize_worker_shutdown();
     deps_.task_scheduler.delete_task(nullptr);
 }
 
@@ -482,4 +473,14 @@ void OtaManager::signal_shutdown_done()
     if (shutdown_done_ != nullptr) {
         deps_.task_scheduler.semaphore_give(shutdown_done_);
     }
+}
+
+void OtaManager::finalize_worker_shutdown()
+{
+    if (state_mutex_ != nullptr && deps_.task_scheduler.semaphore_take(state_mutex_, portMAX_DELAY) == pdPASS) {
+        ota_task_handle_ = nullptr;
+        deps_.task_scheduler.semaphore_give(state_mutex_);
+    }
+
+    signal_shutdown_done();
 }

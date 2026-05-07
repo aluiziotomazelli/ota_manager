@@ -14,13 +14,21 @@ public:
     /** @brief Initializes the OTA manager with the provided configuration. */
     virtual bool init(const OtaConfig& config) = 0;
 
-    /** @brief Cleans up resources used by the OTA manager. */
-    virtual void deinit() = 0;
+    /**
+     * @brief Stops the worker task and cleans up resources used by the OTA manager.
+     *
+     * @return true if shutdown completed cleanly, false otherwise.
+     */
+    virtual bool deinit() = 0;
 
     /** @brief Initiates the OTA process in the background. */
     virtual bool start_ota() = 0;
 
-    /** @brief Cancels an ongoing OTA process. */
+    /**
+     * @brief Cancels the current OTA operation and returns the manager to IDLE.
+     *
+     * This preserves the worker infrastructure for future OTA runs.
+     */
     virtual void cancel_ota() = 0;
 
     /** @brief Returns the current status of the OTA manager. */
@@ -35,4 +43,3 @@ public:
     /** @brief Marks the current image as invalid and requests a rollback and reboot. */
     virtual void rollback_and_reboot() = 0;
 };
-

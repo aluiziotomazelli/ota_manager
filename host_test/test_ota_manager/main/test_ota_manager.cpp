@@ -120,7 +120,7 @@ TEST_F(OtaManagerTest, InitGoesToIdleState)
 TEST_F(OtaManagerTest, DeinitSuccess)
 {
     EXPECT_TRUE(ota_manager.init(config));
-    ota_manager.deinit();
+    EXPECT_TRUE(ota_manager.deinit());
     EXPECT_EQ(ota_manager.get_status(), OtaStatus::IDLE);
 }
 
@@ -132,7 +132,7 @@ TEST_F(OtaManagerTest, DeinitWithoutTaskCleansResourcesWithoutErrors)
     EXPECT_CALL(mock_task_scheduler, semaphore_delete(fake_shutdown_done)).Times(1);
     EXPECT_CALL(mock_task_scheduler, semaphore_delete(fake_mutex)).Times(1);
 
-    ota_manager.deinit();
+    EXPECT_TRUE(ota_manager.deinit());
     EXPECT_EQ(ota_manager.get_status(), OtaStatus::IDLE);
 }
 
@@ -143,46 +143,65 @@ TEST_F(OtaManagerTest, DeinitWithActiveTaskNotifiesStopBitAndWaitsForShutdown)
 
     EXPECT_CALL(mock_ota_session, abort()).Times(1);
 
-    // Mutex takes (2 on deinit: one to read task_handle, one to delete)
-    EXPECT_CALL(mock_task_scheduler, semaphore_take(fake_mutex, portMAX_DELAY)).Times(2).WillRepeatedly(Return(pdPASS));
+    EXPECT_CALL(mock_task_scheduler, semaphore_take(fake_mutex, portMAX_DELAY)).Times(1).WillOnce(Return(pdPASS));
 
-    EXPECT_CALL(mock_task_scheduler, semaphore_give(fake_mutex)).Times(2).WillRepeatedly(Return(pdPASS));
+    EXPECT_CALL(mock_task_scheduler, semaphore_give(fake_mutex)).Times(1).WillOnce(Return(pdPASS));
 
     // Shutdown semaphore take
     EXPECT_CALL(mock_task_scheduler, semaphore_take(fake_shutdown_done, pdMS_TO_TICKS(1000))).WillOnce(Return(pdPASS));
 
     EXPECT_CALL(mock_task_scheduler, notify_task(fake_task, OTA_STOP_BIT, eSetBits)).Times(1);
-    EXPECT_CALL(mock_task_scheduler, delete_task(fake_task)).Times(1);
+    EXPECT_CALL(mock_task_scheduler, notify_task(fake_task, OTA_CANCEL_BIT, eSetBits)).Times(0);
     EXPECT_CALL(mock_task_scheduler, semaphore_delete(fake_shutdown_done)).Times(1);
     EXPECT_CALL(mock_task_scheduler, semaphore_delete(fake_mutex)).Times(1);
 
-    ota_manager.deinit();
+    EXPECT_TRUE(ota_manager.deinit());
     EXPECT_EQ(ota_manager.get_status(), OtaStatus::IDLE);
 }
 
-TEST_F(OtaManagerTest, DeinitWithShutdownTimeoutLogsWarningButContinuesCleaning)
+TEST_F(OtaManagerTest, DeinitWithShutdownTimeoutReturnsFalseAndPreservesResources)
 {
     ASSERT_TRUE(ota_manager.init(config));
     ASSERT_TRUE(ota_manager.start_ota());
 
     EXPECT_CALL(mock_ota_session, abort()).Times(1);
 
-    // Mutex takes
-    EXPECT_CALL(mock_task_scheduler, semaphore_take(fake_mutex, portMAX_DELAY)).Times(2).WillRepeatedly(Return(pdPASS));
+    EXPECT_CALL(mock_task_scheduler, semaphore_take(fake_mutex, portMAX_DELAY)).Times(1).WillOnce(Return(pdPASS));
 
-    EXPECT_CALL(mock_task_scheduler, semaphore_give(fake_mutex)).Times(2).WillRepeatedly(Return(pdPASS));
+    EXPECT_CALL(mock_task_scheduler, semaphore_give(fake_mutex)).Times(1).WillOnce(Return(pdPASS));
 
     // Shutdown semaphore TIMES OUT
     EXPECT_CALL(mock_task_scheduler, semaphore_take(fake_shutdown_done, pdMS_TO_TICKS(1000))).WillOnce(Return(pdFAIL));
 
     EXPECT_CALL(mock_task_scheduler, notify_task(fake_task, OTA_STOP_BIT, eSetBits)).Times(1);
+    EXPECT_CALL(mock_task_scheduler, notify_task(fake_task, OTA_CANCEL_BIT, eSetBits)).Times(0);
 
-    // Should still clean up resources despite timeout
-    EXPECT_CALL(mock_task_scheduler, delete_task(fake_task)).Times(1);
-    EXPECT_CALL(mock_task_scheduler, semaphore_delete(fake_shutdown_done)).Times(1);
-    EXPECT_CALL(mock_task_scheduler, semaphore_delete(fake_mutex)).Times(1);
+    // Timeout should preserve resources and report failure
+    EXPECT_CALL(mock_task_scheduler, semaphore_delete(fake_shutdown_done)).Times(0);
+    EXPECT_CALL(mock_task_scheduler, semaphore_delete(fake_mutex)).Times(0);
 
-    ota_manager.deinit();
+    EXPECT_FALSE(ota_manager.deinit());
+}
+
+TEST_F(OtaManagerTest, GetStatusStillWorksAfterShutdownTimeout)
+{
+    ASSERT_TRUE(ota_manager.init(config));
+    ASSERT_TRUE(ota_manager.start_ota());
+
+    EXPECT_CALL(mock_ota_session, abort()).Times(1);
+
+    EXPECT_CALL(mock_task_scheduler, semaphore_take(fake_mutex, portMAX_DELAY)).Times(1).WillOnce(Return(pdPASS));
+    EXPECT_CALL(mock_task_scheduler, semaphore_give(fake_mutex)).Times(1).WillOnce(Return(pdPASS));
+    EXPECT_CALL(mock_task_scheduler, semaphore_take(fake_shutdown_done, pdMS_TO_TICKS(1000))).WillOnce(Return(pdFAIL));
+    EXPECT_CALL(mock_task_scheduler, notify_task(fake_task, OTA_STOP_BIT, eSetBits)).Times(1);
+    EXPECT_CALL(mock_task_scheduler, semaphore_delete(fake_shutdown_done)).Times(0);
+    EXPECT_CALL(mock_task_scheduler, semaphore_delete(fake_mutex)).Times(0);
+
+    EXPECT_FALSE(ota_manager.deinit());
+
+    EXPECT_CALL(mock_task_scheduler, semaphore_take(fake_mutex, portMAX_DELAY)).WillOnce(Return(pdPASS));
+    EXPECT_CALL(mock_task_scheduler, semaphore_give(fake_mutex)).Times(1);
+
     EXPECT_EQ(ota_manager.get_status(), OtaStatus::IDLE);
 }
 
@@ -193,7 +212,7 @@ TEST_F(OtaManagerTest, DeinitDeletesMutexAndSemaphore)
     EXPECT_CALL(mock_task_scheduler, semaphore_delete(fake_shutdown_done)).Times(1);
     EXPECT_CALL(mock_task_scheduler, semaphore_delete(fake_mutex)).Times(1);
 
-    ota_manager.deinit();
+    EXPECT_TRUE(ota_manager.deinit());
 }
 
 TEST_F(OtaManagerTest, DeinitCallsAbortOnOtaSession)
@@ -202,14 +221,14 @@ TEST_F(OtaManagerTest, DeinitCallsAbortOnOtaSession)
 
     EXPECT_CALL(mock_ota_session, abort()).Times(1);
 
-    ota_manager.deinit();
+    EXPECT_TRUE(ota_manager.deinit());
 }
 
 TEST_F(OtaManagerTest, DeinitSetsStatusToIdle)
 {
     ASSERT_TRUE(ota_manager.init(config));
 
-    ota_manager.deinit();
+    EXPECT_TRUE(ota_manager.deinit());
 
     EXPECT_EQ(ota_manager.get_status(), OtaStatus::IDLE);
 }
@@ -223,11 +242,11 @@ TEST_F(OtaManagerTest, MultipleDeinitCallsAreSafe)
     EXPECT_CALL(mock_task_scheduler, semaphore_delete(fake_shutdown_done)).Times(1);
     EXPECT_CALL(mock_task_scheduler, semaphore_delete(fake_mutex)).Times(1);
 
-    ota_manager.deinit();
+    EXPECT_TRUE(ota_manager.deinit());
 
     // Second deinit should not crash or double-free
     // abort() is called again, but mutex/semaphore are already null
-    ota_manager.deinit();
+    EXPECT_TRUE(ota_manager.deinit());
 
     EXPECT_EQ(ota_manager.get_status(), OtaStatus::IDLE);
 }
@@ -333,6 +352,7 @@ TEST_F(OtaManagerTest, CancelOtaNotifiesCancelBitIfTaskIsActive)
     ASSERT_TRUE(ota_manager.start_ota()); // Creates the task
 
     EXPECT_CALL(mock_ota_session, abort()).Times(1);
+    EXPECT_CALL(mock_task_scheduler, notify_task(fake_task, OTA_STOP_BIT, eSetBits)).Times(0);
     EXPECT_CALL(mock_task_scheduler, notify_task(fake_task, OTA_CANCEL_BIT, eSetBits)).Times(1);
 
     ota_manager.cancel_ota();

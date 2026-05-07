@@ -268,7 +268,7 @@ TEST_F(OtaManagerTaskTest, ShutdownCleansUpResourcesAndStopsTask)
     EXPECT_CALL(mock_ota_session, abort()).Times(::testing::AtLeast(1));
 
     // Execute Deinit
-    sut.deinit();
+    EXPECT_TRUE(sut.deinit());
 
     // Wait a bit for the task to be deleted by the scheduler
     vTaskDelay(pdMS_TO_TICKS(50));

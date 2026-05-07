@@ -19,13 +19,20 @@ To handle the OTA orchestration process without blocking the application or risk
 
 ### 3. Synchronization and Thread Safety
 Managing the lifecycle of a long-running worker task is complex. We implemented the following mechanisms:
-- **Notification-Based Control:** Replaced boolean flags and mutex-heavy cancellation checks with direct FreeRTOS task notifications (`OTA_CANCEL_BIT`).
+- **Notification-Based Control:** Replaced boolean flags and mutex-heavy cancellation checks with direct FreeRTOS task notifications (`OTA_START_BIT`, `OTA_STOP_BIT`, `OTA_CANCEL_BIT`).
 - **Resource Protection:** Used a `state_mutex_` to ensure atomic state updates and safe access to task handles.
-- **Graceful Shutdown:** Implemented a binary semaphore (`shutdown_done_`) that the `deinit()` method uses to synchronize the destruction of task resources. The worker task is guaranteed to signal this semaphore before terminating, preventing `deinit()` from deleting a task handle that is still in use.
+- **Graceful Shutdown:** Implemented a binary semaphore (`shutdown_done_`) that `deinit()` uses to wait for worker exit before releasing lifecycle resources. The worker clears its task handle, signals shutdown completion, and then self-deletes.
 
-### 4. Integration and Validation
+### 4. Cancellation vs Shutdown
+The component treats cancellation and shutdown as distinct operations.
+- `cancel_ota()` aborts the current transfer, notifies the worker with `OTA_CANCEL_BIT`, and returns the manager to `IDLE` without tearing down the worker infrastructure.
+- `deinit()` aborts the active session, notifies the worker with `OTA_STOP_BIT`, waits for shutdown confirmation, and only then releases synchronization primitives.
+
+This separation prevents a cancellation request from being interpreted as component teardown.
+
+### 5. Integration and Validation
 - **Host Testing:** All complex components are designed to be tested on the host by mocking the HAL interfaces. Stub headers are provided for ESP-IDF specific files to facilitate successful host-side compilation.
-### 5. Firmware Integrity Verification
+### 6. Firmware Integrity Verification
 The `ota_manager` enforces mandatory SHA-256 validation for every update to ensure firmware integrity.
 - **Precision Hashing:** Instead of using the native `esp_partition_get_sha256()` which calculates the hash over the entire partition (including potential flash padding/garbage), we implement a manual calculation using `mbedtls` that processes exactly `firmware_size` bytes. 
 - **Consistency:** This approach ensures that the hash calculated on the server (the build machine) matches the one computed on the ESP32. It avoids mismatches caused by different partition sizes or trailing flash data, ensuring the binary transferred is exactly the one validated.
