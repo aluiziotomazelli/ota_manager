@@ -109,30 +109,16 @@ Updated `OtaManager::handle_download_state()` to explicitly validate both `curre
 
 ## 7. HTTP-Only Development Support Is Tied Too Closely to Build Configuration
 
-### Problem
+**Status:** Resolved (Commit 27b79eb)
 
-The component currently relies on `CONFIG_ESP_HTTPS_OTA_ALLOW_HTTP=y` as a practical requirement for normal operation. That is fine for local development, but weak as the long-term behavior model.
+### Problem (Historical)
 
-### Why It Matters
+The component previously relied on `CONFIG_ESP_HTTPS_OTA_ALLOW_HTTP=y` as the primary gate for HTTP support. Runtime intent was not expressed clearly by the API, making it hard to differentiate between secure production and local testing.
 
-- Environment policy is encoded mostly in build flags.
-- Runtime intent is not expressed clearly by the API.
-- It becomes harder to support both secure production and simple local testing cleanly.
+### Resolution
 
-### Most Efficient Fix
+Moved the policy decision into `OtaSecurityConfig`. The new `allow_http_during_development` flag provides a clear runtime opt-in for insecure connections, ensuring secure-by-default behavior while maintaining simple local development support.
 
-Move the policy decision into component configuration and let build flags act only as lower-level capability switches.
-
-Recommended direction:
-
-1. Add an explicit runtime policy such as `allow_http_during_development`.
-2. Reject HTTP URLs when the policy is disabled.
-3. Keep `CONFIG_ESP_HTTPS_OTA_ALLOW_HTTP` only as an implementation prerequisite for dev mode.
-
-### Preferred Outcome
-
-- Secure-by-default runtime behavior.
-- Simple, explicit local development opt-in.
 
 ## 8. On-Target Validation Is Too Thin for Transport Evolution
 
@@ -165,21 +151,22 @@ Recommended minimum scenarios:
 
 The most efficient order before the HTTPS migration is:
 
-1. Fix worker shutdown and resource lifetime.
-2. Redesign transport configuration ownership.
-3. Split and unify manifest/download transport settings.
-4. Add explicit runtime transport policy checks for both URLs.
-5. Replace ESP-IDF transport types in public interfaces with domain request structs.
-6. Fix the unchecked version parsing path.
-7. Expand on-target integration coverage.
+1. Fix worker shutdown and resource lifetime. (IN PROGRESS)
+2. Expand on-target integration coverage. (TODO)
+
+Resolved items:
+- Redesign transport configuration ownership. (Resolved)
+- Split and unify manifest/download transport settings. (Resolved)
+- Add explicit runtime transport policy checks for both URLs. (Resolved)
+- Replace ESP-IDF transport types in public interfaces with domain request structs. (Resolved)
+- Fix the unchecked version parsing path. (Resolved)
 
 ## What Should Be Fixed Before HTTPS Starts
 
-The following should be considered blocking prerequisites:
+The following should still be considered blocking prerequisites:
 
 - Worker shutdown and resource lifetime.
-- Transport configuration ownership.
-- Policy enforcement at both network boundaries.
 - On-target integration coverage for transport behavior.
 
-Everything else can be done in the same preparatory phase, but these four items have the highest leverage and risk reduction.
+Everything else has been resolved in the preparatory phase, significantly reducing risk before starting the HTTPS migration.
+
