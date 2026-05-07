@@ -178,6 +178,13 @@ To get the hash for your binary:
 sha256sum firmware.bin
 ```
 
+### 5. Automating Manifest Management
+
+For a streamlined development workflow, use the included OTA Test Server tools. It provides a CLI (`manage.py`) that automatically calculates the SHA-256 hash, determines firmware metadata, and generates a properly formatted `manifest.json`.
+
+- **Location**: `test_apps/ota_server/`
+- **Documentation**: See [OTA Test Server README](test_apps/ota_server/README.md) for full usage instructions and automation examples.
+
 ## Project Structure
 
 ```
