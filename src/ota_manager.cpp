@@ -41,9 +41,8 @@ std::string bytes_to_hex(const uint8_t* bytes, size_t len)
 }
 } // namespace
 
-OtaManager::OtaManager(const OtaDependencies& deps, const OtaConfig& config)
+OtaManager::OtaManager(const OtaDependencies& deps)
     : deps_(deps)
-    , config_(config)
     , status_(OtaStatus::IDLE)
 {
 }

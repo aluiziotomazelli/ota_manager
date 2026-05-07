@@ -104,11 +104,11 @@ OtaConfig config = {
 };
 
 // 3. Initialize and Start
-OtaManager ota(deps, config);
-ota.init(config);
-
-// Trigger OTA process in the background
-ota.start_ota();
+OtaManager ota(deps);
+if (ota.init(config)) {
+    // Trigger OTA process in the background
+    ota.start_ota();
+}
 ```
 
 ### 3. Verification after Boot

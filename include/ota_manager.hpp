@@ -47,9 +47,8 @@ public:
      * @brief Constructs an OtaManager with the specified dependencies and configuration.
      * 
      * @param deps Dependency injection structure containing all required interfaces
-     * @param config Configuration settings for the OTA manager
      */
-    OtaManager(const OtaDependencies& deps, const OtaConfig& config);
+    OtaManager(const OtaDependencies& deps);
     
     /**
      * @brief Destructor for OtaManager.
