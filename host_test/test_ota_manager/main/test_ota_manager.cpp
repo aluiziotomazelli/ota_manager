@@ -777,7 +777,7 @@ TEST_F(OtaManagerTest, HandleDownloadStateSessionNotActiveBeginFails)
     EXPECT_CALL(mock_ota_session, is_active()).WillOnce(Return(false));
     
     // Mock begin() failure
-    EXPECT_CALL(mock_ota_session, begin(::testing::_)).WillOnce(Return(ESP_FAIL));
+    EXPECT_CALL(mock_ota_session, begin(::testing::Field(&OtaDownloadRequest::url, manifest.firmware_url))).WillOnce(Return(ESP_FAIL));
 
     EXPECT_EQ(testable_manager.handle_download_state(), OtaStepResult::FAILED);
 }
@@ -798,7 +798,7 @@ TEST_F(OtaManagerTest, HandleDownloadStateSessionNotActiveGetImgDescFails)
     EXPECT_CALL(mock_ota_session, is_active()).WillOnce(Return(false));
     
     // Mock begin() success
-    EXPECT_CALL(mock_ota_session, begin(::testing::_)).WillOnce(Return(ESP_OK));
+    EXPECT_CALL(mock_ota_session, begin(::testing::Field(&OtaDownloadRequest::url, manifest.firmware_url))).WillOnce(Return(ESP_OK));
     
     // Mock get_img_desc() failure
     EXPECT_CALL(mock_ota_session, get_img_desc(::testing::_)).WillOnce(Return(ESP_FAIL));
@@ -825,7 +825,7 @@ TEST_F(OtaManagerTest, HandleDownloadStateSessionNotActiveImageVersionInvalid)
     EXPECT_CALL(mock_ota_session, is_active()).WillOnce(Return(false));
     
     // Mock begin() success
-    EXPECT_CALL(mock_ota_session, begin(::testing::_)).WillOnce(Return(ESP_OK));
+    EXPECT_CALL(mock_ota_session, begin(::testing::Field(&OtaDownloadRequest::url, manifest.firmware_url))).WillOnce(Return(ESP_OK));
     
     // Mock get_img_desc() success
     esp_app_desc_t new_app_info = {};

@@ -66,9 +66,14 @@ struct OtaSecurityConfig
     bool allow_http_during_development = false; /**< Whether to allow insecure HTTP connections */
 };
 
+struct OtaDownloadRequest {
+    std::string url;            /**< URL to download the firmware image */
+    uint32_t timeout_ms;        /**< Timeout for the download request */
+};
+
 /**
  * @brief Configuration structure for the OTA manager.
- *
+...
  * Contains all settings needed to configure the OTA manager behavior including
  * network settings, task configuration, and update policies.
  */

@@ -387,15 +387,6 @@ OtaStepResult OtaManager::handle_version_state()
  * @brief Handles the firmware download state.
  * @note This operation is iterative and returns IN_PROGRESS until complete.
  */
-esp_http_client_config_t OtaManager::get_http_config(const std::string& url, uint32_t timeout_ms) const
-{
-    esp_http_client_config_t config = {};
-    config.url = url.c_str();
-    config.timeout_ms = timeout_ms;
-    // Future: add TLS/cert configuration here
-    return config;
-}
-
 OtaStepResult OtaManager::handle_download_state()
 {
     // 1. Setup session if not active
@@ -404,13 +395,16 @@ OtaStepResult OtaManager::handle_download_state()
             return OtaStepResult::FAILED;
         }
 
-        esp_http_client_config_t http_config = get_http_config(manifest_.firmware_url, config_.transport.firmware_timeout_ms);
+        OtaDownloadRequest request;
+        request.url = manifest_.firmware_url;
+        request.timeout_ms = config_.transport.firmware_timeout_ms;
 
-        if (deps_.ota_session.begin(&http_config) != ESP_OK) {
+        if (deps_.ota_session.begin(request) != ESP_OK) {
             ESP_LOGE(TAG, "Failed to begin OTA session");
             deps_.ota_session.abort();
             return OtaStepResult::FAILED;
         }
+
 
 
         // Verify image descriptor (extra safety)

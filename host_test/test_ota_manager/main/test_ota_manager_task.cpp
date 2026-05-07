@@ -87,7 +87,7 @@ protected:
         EXPECT_CALL(mock_manifest_parser, parse(manifest_json)).WillRepeatedly(Return(manifest));
         EXPECT_CALL(mock_system, get_running_app_desc()).WillRepeatedly(Return(&running_app));
         EXPECT_CALL(mock_ota_session, is_active()).WillRepeatedly(Return(true));
-        EXPECT_CALL(mock_ota_session, begin(_)).WillRepeatedly(Return(ESP_OK));
+        EXPECT_CALL(mock_ota_session, begin(::testing::_)).WillRepeatedly(Return(ESP_OK));
         EXPECT_CALL(mock_ota_session, perform()).WillRepeatedly(Return(ESP_OK));
         EXPECT_CALL(mock_ota_session, finish()).WillRepeatedly(Return(ESP_OK));
         
@@ -135,7 +135,7 @@ TEST_F(OtaManagerTaskTest, FullOtaSuccessFlow)
         .WillOnce(Return(false)) // First check in download state
         .WillRepeatedly(Return(true));
 
-    EXPECT_CALL(mock_ota_session, begin(_)).WillOnce(Return(ESP_OK));
+    EXPECT_CALL(mock_ota_session, begin(::testing::_)).WillOnce(Return(ESP_OK));
 
     EXPECT_CALL(mock_ota_session, get_img_desc(_)).WillOnce(DoAll(SetArgPointee<0>(new_app_desc), Return(ESP_OK)));
 
@@ -232,7 +232,7 @@ TEST_F(OtaManagerTaskTest, DownloadFailsWhenSessionBeginFails)
 
     // Simulate session begin failure
     EXPECT_CALL(mock_ota_session, is_active()).WillOnce(Return(false));
-    EXPECT_CALL(mock_ota_session, begin(_)).WillOnce(Return(ESP_FAIL));
+    EXPECT_CALL(mock_ota_session, begin(::testing::_)).WillOnce(Return(ESP_FAIL));
 
     // Expect abort to be called during failure cleanup
     EXPECT_CALL(mock_ota_session, abort()).Times(1);
@@ -304,7 +304,7 @@ TEST_F(OtaManagerTaskTest, VerificationFailsTransitionsToFailed)
     EXPECT_CALL(mock_manifest_parser, parse(manifest_json)).WillOnce(Return(manifest));
     EXPECT_CALL(mock_system, get_running_app_desc()).WillRepeatedly(Return(&running_app));
     EXPECT_CALL(mock_ota_session, is_active()).WillRepeatedly(Return(true));
-    EXPECT_CALL(mock_ota_session, begin(_)).WillRepeatedly(Return(ESP_OK));
+    EXPECT_CALL(mock_ota_session, begin(::testing::_)).WillRepeatedly(Return(ESP_OK));
     EXPECT_CALL(mock_ota_session, perform()).WillRepeatedly(Return(ESP_OK));
     EXPECT_CALL(mock_ota_session, finish()).WillRepeatedly(Return(ESP_OK));
 
@@ -345,7 +345,7 @@ TEST_F(OtaManagerTaskTest, CancelOtaTransitionsToIdle)
     EXPECT_CALL(mock_manifest_parser, parse(manifest_json)).WillOnce(Return(manifest));
     EXPECT_CALL(mock_system, get_running_app_desc()).WillRepeatedly(Return(&running_app));
     EXPECT_CALL(mock_ota_session, is_active()).WillRepeatedly(Return(true));
-    EXPECT_CALL(mock_ota_session, begin(_)).WillRepeatedly(Return(ESP_OK));
+    EXPECT_CALL(mock_ota_session, begin(::testing::_)).WillRepeatedly(Return(ESP_OK));
 
     // Simulate hanging download
     EXPECT_CALL(mock_ota_session, perform()).WillRepeatedly(testing::Invoke([]() {

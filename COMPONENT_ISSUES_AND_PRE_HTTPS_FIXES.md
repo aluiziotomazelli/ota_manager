@@ -83,32 +83,16 @@ Consolidated configuration ownership within `OtaManager`. `OtaManager` now acts 
 
 ## 5. `IOtaSession` Is Not Actually Transport-Agnostic
 
-### Problem
+**Status:** Resolved (Commit 9b28aee)
 
-The current interface exposes `esp_http_client_config_t`, which means the abstraction already leaks ESP-IDF transport details.
+### Problem (Historical)
 
-This is not necessarily wrong, but it conflicts with the intended direction of a generic or domain-level OTA abstraction.
+The `IOtaSession` interface leaked ESP-IDF transport details by exposing `esp_http_client_config_t` in its `begin()` method, conflicting with the goal of providing a domain-level OTA abstraction.
 
-### Why It Matters
+### Resolution
 
-- The API contract is misleading.
-- It becomes harder to evolve transport policy cleanly.
-- Host tests remain possible, but the interface boundary is weaker than it looks.
+Introduced `OtaDownloadRequest` as a domain-level structure to encapsulate download parameters. `IOtaSession` now accepts this structure, decoupling the orchestration layer from underlying transport types and localizing ESP-IDF dependencies within the concrete `OtaSession` implementation.
 
-### Most Efficient Fix
-
-Choose one direction and document it clearly.
-
-Recommended direction for this component:
-
-1. Replace `esp_http_client_config_t` in the interface with a domain request struct such as `OtaDownloadRequest`.
-2. Keep ESP-IDF-specific types inside concrete implementation files where possible.
-3. Mirror this pattern for manifest fetch with a dedicated request object.
-
-### Preferred Outcome
-
-- Clearer public API.
-- Better long-term separation between orchestration and ESP-IDF transport details.
 
 ## 6. Version Validation Has an Unchecked Optional Value
 

@@ -2,7 +2,7 @@
 
 #include "esp_app_desc.h"
 #include "esp_err.h"
-#include "esp_http_client.h"
+#include "ota_types.hpp"
 
 /**
  * @brief Interface for managing an OTA update session.
@@ -12,8 +12,8 @@ class IOtaSession
 public:
     virtual ~IOtaSession() = default;
 
-    /** @copydoc esp_https_ota_begin() */
-    virtual esp_err_t begin(const esp_http_client_config_t *config) = 0;
+    /** @brief Starts an OTA update session. */
+    virtual esp_err_t begin(const OtaDownloadRequest& request) = 0;
 
     /** @copydoc esp_https_ota_get_img_desc() */
     virtual esp_err_t get_img_desc(esp_app_desc_t *new_app_info) = 0;

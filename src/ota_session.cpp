@@ -4,15 +4,19 @@
 
 static const char* TAG = "OtaSession";
 
-esp_err_t OtaSession::begin(const esp_http_client_config_t* config)
+esp_err_t OtaSession::begin(const OtaDownloadRequest& request)
 {
     if (ota_handle_ != nullptr) {
         ESP_LOGE(TAG, "OTA session already active");
         return ESP_ERR_INVALID_STATE;
     }
 
+    esp_http_client_config_t http_config = {};
+    http_config.url = request.url.c_str();
+    http_config.timeout_ms = request.timeout_ms;
+
     esp_https_ota_config_t ota_config = {};
-    ota_config.http_config = config;
+    ota_config.http_config = &http_config;
 
     return esp_https_ota_begin(&ota_config, &ota_handle_);
 }
