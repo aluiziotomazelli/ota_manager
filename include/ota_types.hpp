@@ -19,6 +19,16 @@ enum class OtaStatus
 };
 
 /**
+ * @brief Result of an individual OTA step operation.
+ */
+enum class OtaStepResult
+{
+    SUCCESS,      /**< Step completed successfully, proceed to next state */
+    FAILED,       /**< Step encountered an error, transition to FAILED */
+    IN_PROGRESS   /**< Step is ongoing (only used by handle_download_state) */
+};
+
+/**
  * @brief Struct representing a semantic version number.
  *
  * Contains major, minor, and patch version components.

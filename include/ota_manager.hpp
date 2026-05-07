@@ -32,16 +32,6 @@ struct OtaDependencies
 };
 
 /**
- * @brief Result of an individual OTA step operation.
- */
-enum class OtaStepResult
-{
-    SUCCESS,      /**< Step completed successfully */
-    IN_PROGRESS,  /**< Step is still in progress (asynchronous operation) */
-    FAILED        /**< Step encountered an error */
-};
-
-/**
  * @brief Concrete implementation of the OTA Manager interface.
  * 
  * Manages the complete OTA update flow including manifest fetching, version checking,
@@ -61,13 +51,25 @@ public:
      */
     OtaManager(const OtaDependencies& deps, const OtaConfig& config);
     
-    /** @brief Destroys the OtaManager instance and releases resources. */
+    /**
+     * @brief Destructor for OtaManager.
+     * @note Does NOT call deinit() automatically to avoid side effects in 
+     * Dependency Injection scenarios. The caller is responsible for calling deinit().
+     */
     ~OtaManager() override;
 
-    /** @copydoc IOtaManager::init() */
+    /**
+     * @brief Initializes the OTA manager with the provided configuration.
+     * @param config Configuration settings
+     * @return true if initialization succeeded, false otherwise
+     */
     bool init(const OtaConfig& config) override;
     
-    /** @copydoc IOtaManager::deinit() */
+    /**
+     * @brief Cleans up resources used by the OTA manager.
+     * @note This method MUST be called manually before the object is destroyed
+     * to ensure all background tasks are stopped and mutexes are released.
+     */
     void deinit() override;
     
     /** @copydoc IOtaManager::start_ota() */
