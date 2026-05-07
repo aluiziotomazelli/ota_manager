@@ -47,7 +47,7 @@ protected:
         .allow_same_version = true,
         .restart_on_success = true};
 
-    OtaManagerTestable ota_manager = OtaManagerTestable(deps, config);
+    OtaManagerTestable ota_manager = OtaManagerTestable(deps);
 
     SemaphoreHandle_t fake_mutex = reinterpret_cast<SemaphoreHandle_t>(0x1);
     SemaphoreHandle_t fake_shutdown_done = reinterpret_cast<SemaphoreHandle_t>(0x2);
@@ -238,7 +238,7 @@ TEST_F(OtaManagerTest, MultipleDeinitCallsAreSafe)
 
 TEST_F(OtaManagerTest, StartOtaWhenStatusIsNotIdleOrFailedReturnsFalse)
 {
-    OtaManagerTestable testable_manager(deps, config);
+    OtaManagerTestable testable_manager(deps);
     ASSERT_TRUE(testable_manager.init(config));
 
     // Set status to something other than IDLE or FAILED
@@ -268,7 +268,7 @@ TEST_F(OtaManagerTest, StartOtaWhenStatusIsIdleCreatesTaskAndNotifiesStartBit)
 
 TEST_F(OtaManagerTest, StartOtaWhenStatusIsFailedCreatesTaskAndNotifiesStartBit)
 {
-    OtaManagerTestable testable_manager(deps, config);
+    OtaManagerTestable testable_manager(deps);
     ASSERT_TRUE(testable_manager.init(config));
 
     // Set status to FAILED
@@ -395,7 +395,7 @@ TEST_F(OtaManagerTest, RollbackAndRebootCallsRollbackManager)
 TEST_F(OtaManagerTest, GetStatusReturnsStatusWithoutLockingIfMutexIsNull)
 {
     // Don't call init(), so state_mutex_ remains nullptr
-    OtaManagerTestable testable_manager(deps, config);
+    OtaManagerTestable testable_manager(deps);
     testable_manager.set_status(OtaStatus::DOWNLOADING);
 
     // Should not attempt to take mutex
@@ -420,7 +420,7 @@ TEST_F(OtaManagerTest, GetStatusReturnsStatusWithoutLockingIfSemaphoreTakeFails)
 
 TEST_F(OtaManagerTest, GetStatusReturnsStatusProtectedByMutexWhenAvailable)
 {
-    OtaManagerTestable testable_manager(deps, config);
+    OtaManagerTestable testable_manager(deps);
     ASSERT_TRUE(testable_manager.init(config));
 
     testable_manager.set_status(OtaStatus::VERIFYING);
@@ -439,7 +439,7 @@ TEST_F(OtaManagerTest, GetStatusReturnsStatusProtectedByMutexWhenAvailable)
 
 TEST_F(OtaManagerTest, HandleManifestStateFetchFailsReturnsFailed)
 {
-    OtaManagerTestable testable_manager(deps, config);
+    OtaManagerTestable testable_manager(deps);
     ASSERT_TRUE(testable_manager.init(config));
 
     std::string dummy_content;
@@ -450,7 +450,7 @@ TEST_F(OtaManagerTest, HandleManifestStateFetchFailsReturnsFailed)
 
 TEST_F(OtaManagerTest, HandleManifestStateParseFailsReturnsFailed)
 {
-    OtaManagerTestable testable_manager(deps, config);
+    OtaManagerTestable testable_manager(deps);
     ASSERT_TRUE(testable_manager.init(config));
 
     std::string manifest_content = R"({"invalid": "json"})";
@@ -464,7 +464,7 @@ TEST_F(OtaManagerTest, HandleManifestStateParseFailsReturnsFailed)
 
 TEST_F(OtaManagerTest, HandleManifestStateParseSuccessPopulatesManifestAndReturnsSuccess)
 {
-    OtaManagerTestable testable_manager(deps, config);
+    OtaManagerTestable testable_manager(deps);
     ASSERT_TRUE(testable_manager.init(config));
 
     std::string manifest_content = R"({
@@ -500,7 +500,7 @@ TEST_F(OtaManagerTest, HandleManifestStateParseSuccessPopulatesManifestAndReturn
 
 TEST_F(OtaManagerTest, HandleVersionStateDeviceTypeMismatchReturnsFailed)
 {
-    OtaManagerTestable testable_manager(deps, config);
+    OtaManagerTestable testable_manager(deps);
     ASSERT_TRUE(testable_manager.init(config));
 
     // Setup manifest with different device type
@@ -513,7 +513,7 @@ TEST_F(OtaManagerTest, HandleVersionStateDeviceTypeMismatchReturnsFailed)
 
 TEST_F(OtaManagerTest, HandleVersionStateFailsToParseCurrentVersionReturnsFailed)
 {
-    OtaManagerTestable testable_manager(deps, config);
+    OtaManagerTestable testable_manager(deps);
     ASSERT_TRUE(testable_manager.init(config));
 
     // Setup manifest with correct device type
@@ -532,7 +532,7 @@ TEST_F(OtaManagerTest, HandleVersionStateFailsToParseCurrentVersionReturnsFailed
 
 TEST_F(OtaManagerTest, HandleVersionStateManifestVersionIsLowerReturnsFailed)
 {
-    OtaManagerTestable testable_manager(deps, config);
+    OtaManagerTestable testable_manager(deps);
     ASSERT_TRUE(testable_manager.init(config));
 
     OtaManifest& manifest = testable_manager.get_manifest_ref();
@@ -549,7 +549,7 @@ TEST_F(OtaManagerTest, HandleVersionStateManifestVersionIsLowerReturnsFailed)
 
 TEST_F(OtaManagerTest, HandleVersionStateSameVersionWithAllowSameFalseReturnsFailed)
 {
-    OtaManagerTestable testable_manager(deps, config);
+    OtaManagerTestable testable_manager(deps);
 
     OtaConfig test_config = config;
     test_config.allow_same_version = false;
@@ -569,7 +569,7 @@ TEST_F(OtaManagerTest, HandleVersionStateSameVersionWithAllowSameFalseReturnsFai
 
 TEST_F(OtaManagerTest, HandleVersionStateSameVersionWithAllowSameTrueReturnsSuccess)
 {
-    OtaManagerTestable testable_manager(deps, config);
+    OtaManagerTestable testable_manager(deps);
 
     OtaConfig test_config = config;
     test_config.allow_same_version = true;
@@ -589,7 +589,7 @@ TEST_F(OtaManagerTest, HandleVersionStateSameVersionWithAllowSameTrueReturnsSucc
 
 TEST_F(OtaManagerTest, HandleVersionStateManifestVersionIsHigherReturnsSuccess)
 {
-    OtaManagerTestable testable_manager(deps, config);
+    OtaManagerTestable testable_manager(deps);
     ASSERT_TRUE(testable_manager.init(config));
 
     OtaManifest& manifest = testable_manager.get_manifest_ref();
@@ -610,7 +610,7 @@ TEST_F(OtaManagerTest, HandleVersionStateManifestVersionIsHigherReturnsSuccess)
 
 TEST_F(OtaManagerTest, HandleVerificationStateGetUpdatePartitionReturnsNullptr)
 {
-    OtaManagerTestable testable_manager(deps, config);
+    OtaManagerTestable testable_manager(deps);
     ASSERT_TRUE(testable_manager.init(config));
 
     // Setup manifest
@@ -626,7 +626,7 @@ TEST_F(OtaManagerTest, HandleVerificationStateGetUpdatePartitionReturnsNullptr)
 
 TEST_F(OtaManagerTest, HandleVerificationStateGetPartitionSha256Fails)
 {
-    OtaManagerTestable testable_manager(deps, config);
+    OtaManagerTestable testable_manager(deps);
     ASSERT_TRUE(testable_manager.init(config));
 
     // Setup manifest
@@ -645,7 +645,7 @@ TEST_F(OtaManagerTest, HandleVerificationStateGetPartitionSha256Fails)
 
 TEST_F(OtaManagerTest, HandleVerificationStateSha256MismatchWithManifest)
 {
-    OtaManagerTestable testable_manager(deps, config);
+    OtaManagerTestable testable_manager(deps);
     ASSERT_TRUE(testable_manager.init(config));
 
     // Setup manifest
@@ -670,7 +670,7 @@ TEST_F(OtaManagerTest, HandleVerificationStateSha256MismatchWithManifest)
 
 TEST_F(OtaManagerTest, HandleVerificationStateSha256MatchesManifestSuccess)
 {
-    OtaManagerTestable testable_manager(deps, config);
+    OtaManagerTestable testable_manager(deps);
     ASSERT_TRUE(testable_manager.init(config));
 
     // Setup manifest with correct SHA256
@@ -699,7 +699,7 @@ TEST_F(OtaManagerTest, HandleVerificationStateSha256MatchesManifestSuccess)
 
 TEST_F(OtaManagerTest, HandleDownloadStateSessionNotActiveBeginFails)
 {
-    OtaManagerTestable testable_manager(deps, config);
+    OtaManagerTestable testable_manager(deps);
     ASSERT_TRUE(testable_manager.init(config));
 
     // Setup manifest
@@ -720,7 +720,7 @@ TEST_F(OtaManagerTest, HandleDownloadStateSessionNotActiveBeginFails)
 
 TEST_F(OtaManagerTest, HandleDownloadStateSessionNotActiveGetImgDescFails)
 {
-    OtaManagerTestable testable_manager(deps, config);
+    OtaManagerTestable testable_manager(deps);
     ASSERT_TRUE(testable_manager.init(config));
 
     // Setup manifest
@@ -747,7 +747,7 @@ TEST_F(OtaManagerTest, HandleDownloadStateSessionNotActiveGetImgDescFails)
 
 TEST_F(OtaManagerTest, HandleDownloadStateSessionNotActiveImageVersionInvalid)
 {
-    OtaManagerTestable testable_manager(deps, config);
+    OtaManagerTestable testable_manager(deps);
     ASSERT_TRUE(testable_manager.init(config));
 
     // Setup manifest
@@ -782,7 +782,7 @@ TEST_F(OtaManagerTest, HandleDownloadStateSessionNotActiveImageVersionInvalid)
 
 TEST_F(OtaManagerTest, HandleDownloadStateSessionActivePerformReturnsInProgress)
 {
-    OtaManagerTestable testable_manager(deps, config);
+    OtaManagerTestable testable_manager(deps);
     ASSERT_TRUE(testable_manager.init(config));
 
     // Setup manifest
@@ -803,7 +803,7 @@ TEST_F(OtaManagerTest, HandleDownloadStateSessionActivePerformReturnsInProgress)
 
 TEST_F(OtaManagerTest, HandleDownloadStateSessionActivePerformFails)
 {
-    OtaManagerTestable testable_manager(deps, config);
+    OtaManagerTestable testable_manager(deps);
     ASSERT_TRUE(testable_manager.init(config));
 
     // Setup manifest
@@ -827,7 +827,7 @@ TEST_F(OtaManagerTest, HandleDownloadStateSessionActivePerformFails)
 
 TEST_F(OtaManagerTest, HandleDownloadStateSessionActiveFinishFails)
 {
-    OtaManagerTestable testable_manager(deps, config);
+    OtaManagerTestable testable_manager(deps);
     ASSERT_TRUE(testable_manager.init(config));
 
     // Setup manifest
@@ -851,7 +851,7 @@ TEST_F(OtaManagerTest, HandleDownloadStateSessionActiveFinishFails)
 
 TEST_F(OtaManagerTest, HandleDownloadStateDownloadCompleteSuccess)
 {
-    OtaManagerTestable testable_manager(deps, config);
+    OtaManagerTestable testable_manager(deps);
     ASSERT_TRUE(testable_manager.init(config));
 
     // Setup manifest

@@ -47,7 +47,7 @@ protected:
         .allow_same_version = true,
         .restart_on_success = true};
 
-    OtaManagerTestable sut = OtaManagerTestable(deps, config);
+    OtaManagerTestable sut = OtaManagerTestable(deps);
 
     SemaphoreHandle_t fake_mutex = reinterpret_cast<SemaphoreHandle_t>(0x1);
     SemaphoreHandle_t fake_shutdown_done = reinterpret_cast<SemaphoreHandle_t>(0x2);
