@@ -25,7 +25,7 @@ Managing the lifecycle of a long-running worker task is complex. We implemented 
 
 ### 4. Integration and Validation
 - **Host Testing:** All complex components are designed to be tested on the host by mocking the HAL interfaces. Stub headers are provided for ESP-IDF specific files to facilitate successful host-side compilation.
-### 4. Firmware Integrity Verification
+### 5. Firmware Integrity Verification
 The `ota_manager` enforces mandatory SHA-256 validation for every update to ensure firmware integrity.
 - **Precision Hashing:** Instead of using the native `esp_partition_get_sha256()` which calculates the hash over the entire partition (including potential flash padding/garbage), we implement a manual calculation using `mbedtls` that processes exactly `firmware_size` bytes. 
 - **Consistency:** This approach ensures that the hash calculated on the server (the build machine) matches the one computed on the ESP32. It avoids mismatches caused by different partition sizes or trailing flash data, ensuring the binary transferred is exactly the one validated.

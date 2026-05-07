@@ -170,7 +170,7 @@ You can use a simple Python HTTP server to host the files:
 python3 -m http.server 8080
 ```
 
-### 3. Calculating SHA-256
+### 4. Calculating SHA-256
 
 To get the hash for your binary:
 
