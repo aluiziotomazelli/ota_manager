@@ -6,41 +6,16 @@ The list is ordered by implementation risk and operational impact.
 
 ## 1. Unsafe Worker Shutdown and Resource Lifetime
 
-### Problem
+**Status:** Resolved (Verified)
 
-The OTA worker task can still be running while `deinit()` deletes its task handle and synchronization primitives.
+### Problem (Historical)
 
-Current behavior:
+The OTA worker task could be running while `deinit()` deleted its task handle and synchronization primitives, leading to potential use-after-free or race conditions during shutdown.
 
-- `deinit()` calls `abort()`, notifies `OTA_STOP_BIT`, waits up to 1 second, then proceeds with cleanup even on timeout.
-- The worker task still uses `state_mutex_`, `shutdown_done_`, and `ota_task_handle_` during its exit path.
-- If the worker is slow to stop, the component may delete resources that are still in use.
+### Resolution
 
-This is a classic ownership and shutdown ordering bug. HTTPS will make it worse because TLS teardown and network timeouts can increase stop latency.
+The component was refactored to implement a coordinated shutdown. The `deinit()` method now requests a stop and waits for a definitive signal (`shutdown_done_`) from the worker. The worker manages its own termination path, signals completion, and self-deletes, ensuring that synchronization primitives are not deleted while in use.
 
-### Why It Matters
-
-- Possible use-after-free on FreeRTOS synchronization objects.
-- Possible deletion of a task that is still executing.
-- Nondeterministic behavior during `deinit()`, `cancel_ota()`, or error recovery.
-
-### Most Efficient Fix
-
-Make the worker task the sole owner of its own termination, and make `deinit()` a coordinated join-like shutdown.
-
-Recommended changes:
-
-1. `deinit()` requests stop and waits for a definitive worker exit signal.
-2. The worker exits its loop, clears `ota_task_handle_`, signals shutdown completion, and self-deletes.
-3. `deinit()` must not call `delete_task()` on a worker that may still be alive.
-4. `deinit()` must not delete `state_mutex_` or `shutdown_done_` until worker exit is confirmed.
-5. If a timeout is kept, return a failure status or leave the component in a safe partially-initialized state instead of force-deleting resources.
-
-### Preferred Outcome
-
-- One clear owner for task termination.
-- No forced cleanup of resources still visible to another thread.
-- Deterministic `deinit()` semantics.
 
 ## 2. Inconsistent Transport Configuration Between Manifest and Firmware Download
 
