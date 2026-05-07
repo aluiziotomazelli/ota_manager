@@ -4,13 +4,13 @@
 
 static const char* TAG = "HttpClient";
 
-esp_err_t HttpClient::fetch(const std::string& url, std::string& output_content)
+esp_err_t HttpClient::fetch(const std::string& url, std::string& output_content, uint32_t timeout_ms)
 {
     output_content.clear();
 
     esp_http_client_config_t config = {};
     config.url = url.c_str();
-    config.timeout_ms = 5000;
+    config.timeout_ms = timeout_ms;
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
     if (client == nullptr) {

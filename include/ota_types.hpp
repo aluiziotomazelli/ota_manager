@@ -55,6 +55,12 @@ struct OtaManifest
     std::string sha256_hex;   /**< SHA256 hash of the firmware for integrity verification */
 };
 
+struct TransportConfig
+{
+    uint32_t manifest_timeout_ms; /**< Timeout for manifest fetching (ms) */
+    uint32_t firmware_timeout_ms; /**< Timeout for firmware download (ms) */
+};
+
 /**
  * @brief Configuration structure for the OTA manager.
  *
@@ -67,7 +73,7 @@ struct OtaConfig
     std::string manifest_url; /**< URL to fetch the OTA manifest from */
     uint32_t task_stack_size; /**< Stack size for the OTA task */
     uint8_t task_priority;    /**< Priority for the OTA task */
-    uint32_t http_timeout_ms; /**< HTTP request timeout in milliseconds */
+    TransportConfig transport;    /**< Transport-specific settings */
     bool allow_same_version;  /**< Whether to allow updates to the same version */
     bool restart_on_success;  /**< Whether to automatically restart after successful update */
 };

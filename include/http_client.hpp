@@ -8,5 +8,5 @@
 class HttpClient : public IHttpClient {
 public:
     /** @copydoc IHttpClient::fetch */
-    esp_err_t fetch(const std::string& url, std::string& output_content) override;
+    esp_err_t fetch(const std::string& url, std::string& output_content, uint32_t timeout_ms) override;
 };

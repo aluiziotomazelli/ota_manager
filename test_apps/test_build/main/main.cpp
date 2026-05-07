@@ -27,7 +27,10 @@ extern "C" void app_main(void)
         .manifest_url = "http://localhost:8080/manifest.json",
         .task_stack_size = 4096,
         .task_priority = 5,
-        .http_timeout_ms = 30000,
+        .transport = {
+            .manifest_timeout_ms = 30000,
+            .firmware_timeout_ms = 30000,
+        },
         .allow_same_version = true,
         .restart_on_success = true};
 

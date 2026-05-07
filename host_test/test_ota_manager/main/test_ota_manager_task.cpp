@@ -43,7 +43,10 @@ protected:
         .manifest_url = "http://localhost:8080/manifest.json",
         .task_stack_size = 4096,
         .task_priority = 5,
-        .http_timeout_ms = 30000,
+        .transport = {
+        .manifest_timeout_ms = 30000,
+        .firmware_timeout_ms = 30000,
+    },
         .allow_same_version = true,
         .restart_on_success = true};
 
@@ -77,7 +80,7 @@ protected:
 
     void setup_success_mocks(const std::string& manifest_json, const OtaManifest& manifest, const esp_app_desc_t& running_app)
     {
-        EXPECT_CALL(mock_http_client, fetch(config.manifest_url, _))
+        EXPECT_CALL(mock_http_client, fetch(config.manifest_url, _, _))
             .WillRepeatedly(DoAll(SetArgReferee<1>(manifest_json), Return(ESP_OK)));
 
         EXPECT_CALL(mock_manifest_parser, parse(manifest_json)).WillRepeatedly(Return(manifest));
@@ -120,7 +123,7 @@ TEST_F(OtaManagerTaskTest, FullOtaSuccessFlow)
     strncpy(new_app_desc.version, "2.0.0", sizeof(new_app_desc.version));
 
     // 2. Setup Mocks
-    EXPECT_CALL(mock_http_client, fetch(config.manifest_url, _))
+    EXPECT_CALL(mock_http_client, fetch(config.manifest_url, _, _))
         .WillOnce(DoAll(SetArgReferee<1>(manifest_json), Return(ESP_OK)));
 
     EXPECT_CALL(mock_manifest_parser, parse(manifest_json)).WillOnce(Return(manifest));
@@ -185,7 +188,7 @@ TEST_F(OtaManagerTaskTest, VersionCheckFailsForOlderVersion)
     strncpy(running_app.version, "1.0.0", sizeof(running_app.version));
 
     // 2. Setup Mocks
-    EXPECT_CALL(mock_http_client, fetch(config.manifest_url, _))
+    EXPECT_CALL(mock_http_client, fetch(config.manifest_url, _, _))
         .WillOnce(DoAll(SetArgReferee<1>(manifest_json), Return(ESP_OK)));
 
     EXPECT_CALL(mock_manifest_parser, parse(manifest_json)).WillOnce(Return(manifest));
@@ -219,7 +222,7 @@ TEST_F(OtaManagerTaskTest, DownloadFailsWhenSessionBeginFails)
     strncpy(running_app.version, "1.0.0", sizeof(running_app.version));
 
     // 2. Setup Mocks
-    EXPECT_CALL(mock_http_client, fetch(config.manifest_url, _))
+    EXPECT_CALL(mock_http_client, fetch(config.manifest_url, _, _))
         .WillOnce(DoAll(SetArgReferee<1>(manifest_json), Return(ESP_OK)));
 
     EXPECT_CALL(mock_manifest_parser, parse(manifest_json)).WillOnce(Return(manifest));
@@ -256,7 +259,7 @@ TEST_F(OtaManagerTaskTest, ShutdownCleansUpResourcesAndStopsTask)
     // Setup - start the OTA task
     config.restart_on_success = false;
 
-    EXPECT_CALL(mock_http_client, fetch(_, _)).WillRepeatedly(Return(ESP_FAIL));
+    EXPECT_CALL(mock_http_client, fetch(_, _, _)).WillRepeatedly(Return(ESP_FAIL));
 
     ASSERT_TRUE(sut.init(config));
     ASSERT_TRUE(sut.start_ota());
@@ -294,7 +297,7 @@ TEST_F(OtaManagerTaskTest, VerificationFailsTransitionsToFailed)
     strncpy(running_app.version, "1.0.0", sizeof(running_app.version));
 
     // 2. Setup Mocks
-    EXPECT_CALL(mock_http_client, fetch(config.manifest_url, _))
+    EXPECT_CALL(mock_http_client, fetch(config.manifest_url, _, _))
         .WillOnce(DoAll(SetArgReferee<1>(manifest_json), Return(ESP_OK)));
 
     EXPECT_CALL(mock_manifest_parser, parse(manifest_json)).WillOnce(Return(manifest));
@@ -335,7 +338,7 @@ TEST_F(OtaManagerTaskTest, CancelOtaTransitionsToIdle)
     strncpy(running_app.version, "1.0.0", sizeof(running_app.version));
 
     // 2. Setup Mocks
-    EXPECT_CALL(mock_http_client, fetch(config.manifest_url, _))
+    EXPECT_CALL(mock_http_client, fetch(config.manifest_url, _, _))
         .WillOnce(DoAll(SetArgReferee<1>(manifest_json), Return(ESP_OK)));
 
     EXPECT_CALL(mock_manifest_parser, parse(manifest_json)).WillOnce(Return(manifest));

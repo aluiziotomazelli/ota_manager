@@ -303,7 +303,7 @@ void OtaManager::ota_task()
 OtaStepResult OtaManager::handle_manifest_state()
 {
     std::string manifest_content;
-    if (deps_.http_client.fetch(config_.manifest_url, manifest_content) != ESP_OK) {
+    if (deps_.http_client.fetch(config_.manifest_url, manifest_content, config_.transport.manifest_timeout_ms) != ESP_OK) {
         ESP_LOGE(TAG, "Failed to fetch manifest from %s", config_.manifest_url.c_str());
         return OtaStepResult::FAILED;
     }
@@ -375,7 +375,7 @@ OtaStepResult OtaManager::handle_download_state()
     if (!deps_.ota_session.is_active()) {
         esp_http_client_config_t http_config = {};
         http_config.url = manifest_.firmware_url.c_str();
-        http_config.timeout_ms = config_.http_timeout_ms;
+        http_config.timeout_ms = config_.transport.firmware_timeout_ms;
 
         if (deps_.ota_session.begin(&http_config) != ESP_OK) {
             ESP_LOGE(TAG, "Failed to begin OTA session");

@@ -98,7 +98,10 @@ OtaConfig config = {
     .manifest_url = "http://192.168.1.100/update.json",
     .task_stack_size = 8192,
     .task_priority = 5,
-    .http_timeout_ms = 10000,
+    .transport = {
+        .manifest_timeout_ms = 10000,
+        .firmware_timeout_ms = 10000,
+    },
     .allow_same_version = false,
     .restart_on_success = true
 };

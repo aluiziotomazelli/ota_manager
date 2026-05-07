@@ -81,12 +81,17 @@ struct OtaManifest {
 Configuration structure for initializing the `OtaManager`.
 
 ```cpp
+struct TransportConfig {
+    uint32_t manifest_timeout_ms; /**< Timeout for manifest fetching (ms) */
+    uint32_t firmware_timeout_ms; /**< Timeout for firmware download (ms) */
+};
+
 struct OtaConfig {
     std::string device_type;  /**< Device type to check in manifest compatibility */
     std::string manifest_url; /**< URL to fetch the OTA manifest from */
     uint32_t task_stack_size; /**< Stack size for the OTA task */
     uint8_t task_priority;    /**< Priority for the OTA task */
-    uint32_t http_timeout_ms; /**< HTTP request timeout in milliseconds */
+    TransportConfig transport;    /**< Transport-specific settings */
     bool allow_same_version;  /**< Whether to allow updates to the same version */
     bool restart_on_success;  /**< Whether to automatically restart after successful update */
 };
@@ -98,7 +103,7 @@ struct OtaConfig {
 | `manifest_url` | `std::string` | - | **Required.** Full HTTP URL for the manifest JSON |
 | `task_stack_size` | `uint32_t` | `8192` | Stack size for the worker task |
 | `task_priority` | `uint8_t` | `5` | Priority for the worker task |
-| `http_timeout_ms` | `uint32_t` | `10000` | Timeout for network operations |
+| `transport` | `TransportConfig` | - | Network operation timeouts |
 | `allow_same_version` | `bool` | `false` | If true, permits reinstalling current version |
 | `restart_on_success` | `bool` | `true` | If true, reboots immediately after hash verification |
 

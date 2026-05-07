@@ -101,7 +101,10 @@ extern "C" void app_main(void)
         .manifest_url = SERVER_URL,
         .task_stack_size = 4096,
         .task_priority = 5,
-        .http_timeout_ms = 30000,
+        .transport = {
+        .manifest_timeout_ms = 30000,
+        .firmware_timeout_ms = 30000,
+    },
         .allow_same_version = false,
         .restart_on_success = true};
 

@@ -43,7 +43,10 @@ protected:
         .manifest_url = "http://localhost:8080/manifest.json",
         .task_stack_size = 4096,
         .task_priority = 5,
-        .http_timeout_ms = 30000,
+        .transport = {
+        .manifest_timeout_ms = 30000,
+        .firmware_timeout_ms = 30000,
+    },
         .allow_same_version = true,
         .restart_on_success = true};
 
@@ -463,7 +466,7 @@ TEST_F(OtaManagerTest, HandleManifestStateFetchFailsReturnsFailed)
     ASSERT_TRUE(testable_manager.init(config));
 
     std::string dummy_content;
-    EXPECT_CALL(mock_http_client, fetch(config.manifest_url, ::testing::_)).WillOnce(Return(ESP_FAIL));
+    EXPECT_CALL(mock_http_client, fetch(config.manifest_url, ::testing::_, ::testing::_)).WillOnce(Return(ESP_FAIL));
 
     EXPECT_EQ(testable_manager.handle_manifest_state(), OtaStepResult::FAILED);
 }
@@ -474,7 +477,7 @@ TEST_F(OtaManagerTest, HandleManifestStateParseFailsReturnsFailed)
     ASSERT_TRUE(testable_manager.init(config));
 
     std::string manifest_content = R"({"invalid": "json"})";
-    EXPECT_CALL(mock_http_client, fetch(config.manifest_url, ::testing::_))
+    EXPECT_CALL(mock_http_client, fetch(config.manifest_url, ::testing::_, ::testing::_))
         .WillOnce(DoAll(SetArgReferee<1>(manifest_content), Return(ESP_OK)));
 
     EXPECT_CALL(mock_manifest_parser, parse(manifest_content)).WillOnce(Return(std::nullopt));
@@ -500,7 +503,7 @@ TEST_F(OtaManagerTest, HandleManifestStateParseSuccessPopulatesManifestAndReturn
     expected_manifest.firmware_url = "http://example.com/fw.bin";
     expected_manifest.sha256_hex = "abcd1234";
 
-    EXPECT_CALL(mock_http_client, fetch(config.manifest_url, ::testing::_))
+    EXPECT_CALL(mock_http_client, fetch(config.manifest_url, ::testing::_, ::testing::_))
         .WillOnce(DoAll(SetArgReferee<1>(manifest_content), Return(ESP_OK)));
 
     EXPECT_CALL(mock_manifest_parser, parse(manifest_content)).WillOnce(Return(expected_manifest));
