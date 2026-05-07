@@ -91,16 +91,6 @@ protected:
         EXPECT_CALL(mock_system, get_update_partition()).WillRepeatedly(Return(&fake_partition));
         EXPECT_CALL(mock_system, get_partition_sha256(&fake_partition, _, _)).WillRepeatedly(Return(ESP_OK));
     }
-
-    void wait_for_status(OtaStatus expected_status, int timeout_ms)
-    {
-        int elapsed_ms = 0;
-        while (sut.get_status() != expected_status && elapsed_ms < timeout_ms) {
-            vTaskDelay(pdMS_TO_TICKS(10));
-            elapsed_ms += 10;
-        }
-        EXPECT_EQ(sut.get_status(), expected_status);
-    }
 };
 
 // ====================================================================
@@ -169,7 +159,13 @@ TEST_F(OtaManagerTaskTest, FullOtaSuccessFlow)
     ASSERT_TRUE(sut.start_ota());
 
     // 4. Wait for transitions
-    wait_for_status(OtaStatus::READY_TO_RESTART, 1000);
+    int timeout_ms = 1000;
+    int elapsed_ms = 0;
+    while (sut.get_status() != OtaStatus::READY_TO_RESTART && elapsed_ms < timeout_ms) {
+        vTaskDelay(pdMS_TO_TICKS(10));
+        elapsed_ms += 10;
+    }
+    EXPECT_EQ(sut.get_status(), OtaStatus::READY_TO_RESTART);
 }
 
 // ====================================================================
@@ -201,7 +197,13 @@ TEST_F(OtaManagerTaskTest, VersionCheckFailsForOlderVersion)
     ASSERT_TRUE(sut.start_ota());
 
     // 4. Wait for transition
-    wait_for_status(OtaStatus::FAILED, 500);
+    int timeout_ms = 500;
+    int elapsed_ms = 0;
+    while (sut.get_status() != OtaStatus::FAILED && elapsed_ms < timeout_ms) {
+        vTaskDelay(pdMS_TO_TICKS(10));
+        elapsed_ms += 10;
+    }
+    EXPECT_EQ(sut.get_status(), OtaStatus::FAILED);
 }
 
 // ====================================================================
@@ -236,7 +238,13 @@ TEST_F(OtaManagerTaskTest, DownloadFailsWhenSessionBeginFails)
     ASSERT_TRUE(sut.start_ota());
 
     // 4. Wait for transition
-    wait_for_status(OtaStatus::FAILED, 500);
+    int timeout_ms = 500;
+    int elapsed_ms = 0;
+    while (sut.get_status() != OtaStatus::FAILED && elapsed_ms < timeout_ms) {
+        vTaskDelay(pdMS_TO_TICKS(10));
+        elapsed_ms += 10;
+    }
+    EXPECT_EQ(sut.get_status(), OtaStatus::FAILED);
 }
 
 // ====================================================================
@@ -246,6 +254,8 @@ TEST_F(OtaManagerTaskTest, DownloadFailsWhenSessionBeginFails)
 TEST_F(OtaManagerTaskTest, ShutdownCleansUpResourcesAndStopsTask)
 {
     // Setup - start the OTA task
+    config.restart_on_success = false;
+
     EXPECT_CALL(mock_http_client, fetch(_, _)).WillRepeatedly(Return(ESP_FAIL));
 
     ASSERT_TRUE(sut.init(config));
