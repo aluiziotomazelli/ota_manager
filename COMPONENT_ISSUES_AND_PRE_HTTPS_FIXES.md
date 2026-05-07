@@ -70,7 +70,7 @@ Added `OtaSecurityConfig` to `OtaConfig` with an explicit `allow_http_during_dev
 
 ## 4. Transport and TLS Configuration Ownership Is Not Well Defined
 
-**Status:** Resolved (Commit 798bf40)
+**Status:** Resolved (Commit 9b28aee)
 
 ### Problem (Historical)
 
