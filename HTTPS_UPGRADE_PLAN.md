@@ -1,51 +1,52 @@
 # HTTPS Upgrade Plan for OTA Manager
 
-This document outlines the steps required to enable secure HTTPS communication for both manifest retrieval and firmware download in the `ota_manager` component.
+This document outlines the architectural requirements and incremental steps to enable secure HTTPS communication for both manifest retrieval and firmware download.
 
 ## Objective
-Transition from plain HTTP to HTTPS to ensure firmware integrity and authenticity during the update process, while maintaining backward compatibility for local development.
+Transition from plain HTTP to HTTPS to ensure firmware integrity and authenticity, maintaining strict separation of concerns and host-testability.
 
-## 1. Architectural Changes
+## 1. Architectural Analysis & Risks
 
-### 1.1 Configuration Update (`OtaConfig`)
-Add an optional field for the Server Root CA certificate.
-- **File:** `include/ota_types.hpp`
-- **Change:** Add `const char* server_cert_pem;` to `OtaConfig` struct.
-- **Impact:** Allows the application to provide the certificate required for SSL validation.
+Acting as the Architecture Guardian, the following risks must be mitigated:
 
-### 1.2 HTTP Client Enhancement (`HttpClient`)
-Update the manifest fetcher to handle secure connections.
-- **File:** `src/http_client.cpp`
-- **Change:** Pass `config.server_cert_pem` to the `esp_http_client_config_t` structure.
-- **Logic:** If `server_cert_pem` is provided, the client will perform certificate validation. If NULL, it stays in insecure mode (if allowed by sdkconfig).
+- **Domain Coupling**: The orchestrator (`OtaManager`) must remain agnostic of SSL implementation details. It should only manage the "intent" of a secure update.
+- **Interface Integrity**: HAL interfaces (`IHttpClient`, `IOtaSession`) must remain generic. We will avoid adding SSL-specific parameters to method calls; instead, the configuration will be injected during HAL instantiation or session initialization.
+- **Host-Testability**: Host-side tests (Linux) must continue to function. Mocks must handle certificate pointers safely without attempting real SSL handshakes.
 
-### 1.3 OTA Session Enhancement (`OtaSession`)
-Update the firmware downloader to utilize the certificate.
-- **File:** `src/ota_session.cpp`
-- **Change:** repass the certificate from the `esp_http_client_config_t` to the `esp_https_ota_begin` call.
+## 2. Refined Incremental Plan
 
-## 2. Security Considerations
+### Step 1: Data Contract Update
+- **Action**: Add `const char* server_cert_pem` to the `OtaConfig` struct.
+- **File**: `include/ota_types.hpp`
+- **Impact**: Prepares the data structure. No build breakage.
+- **Verification**: Ensure successful compilation of all components.
 
-### 2.1 Mutual Exclusivity
-- When `server_cert_pem` is provided, HTTPS should be enforced.
-- For local testing, we should allow the certificate to be `nullptr` only if `CONFIG_ESP_HTTPS_OTA_ALLOW_HTTP` is enabled in the SDK configuration.
+### Step 2: Manifest HAL Refactoring (HttpClient)
+- **Action**: Update `HttpClient::fetch` to populate `esp_http_client_config_t::cert_pem` from `OtaConfig`.
+- **File**: `src/http_client.cpp`
+- **Impact**: Enables SSL validation for manifest fetching.
+- **Verification**: Update `MockHttpClient` to verify the certificate is passed correctly.
 
-### 2.2 Certificate Management
-- **Embedded Certificates:** Instructions should be provided on how to use `COMPONENT_EMBED_TXTFILES` in `CMakeLists.txt` to include `.pem` files directly in the binary.
-- **Certificate Bundles:** Consider supporting the ESP-IDF Certificate Bundle for simpler management of well-known CAs (like GitHub/AWS).
+### Step 3: Download HAL Refactoring (OtaSession)
+- **Action**: Update `OtaSession::begin` to pass the certificate through to the `esp_https_ota_config_t`.
+- **File**: `src/ota_session.cpp`
+- **Impact**: Enables SSL validation for the firmware download stream.
+- **Verification**: Update `MockOtaSession`.
 
-## 3. Implementation Steps
+### Step 4: Security Policy Enforcement (OtaManager)
+- **Action**: Implement logic in `OtaManager` to validate the security context (e.g., warning if HTTPS is used without a certificate when insecure mode is disabled via SDKConfig).
+- **File**: `src/ota_manager.cpp`
+- **Impact**: Centralizes security business rules in the orchestrator.
 
-1.  **Modify Interfaces:** Update `IHttpClient` and `IOtaSession` if needed to ensure the certificate context is preserved.
-2.  **Update Config Struct:** Add the `server_cert_pem` field.
-3.  **Refactor HALs:** Update `HttpClient` and `OtaSession` implementations.
-4.  **Update Mocks:** Adjust host-side tests to account for the new configuration field.
-5.  **Documentation:** Update `README.md` and `API.md` with HTTPS setup instructions.
+### Step 5: Resource Management Documentation
+- **Action**: Add a guide on embedding certificates using `COMPONENT_EMBED_TXTFILES` in `CMakeLists.txt`.
+- **File**: `README.md`
 
-## 4. Local Testing Compatibility
-To keep local development simple:
-- The component will still support `http://` URLs.
-- If the URL is `https://` and no certificate is provided, the connection should fail unless explicitly bypassed (not recommended for production).
+## 3. Security Considerations
+
+- **Insecure Bypass**: Support for `CONFIG_ESP_HTTPS_OTA_ALLOW_HTTP` will be maintained for local development, but a prominent log warning will be issued by the orchestrator if utilized.
+- **Certificate Lifecycle**: The component assumes the certificate string remains valid in memory for the duration of the OTA task.
 
 ---
+*Status: Approved for Incremental Implementation*
 *Date: May 2026*
