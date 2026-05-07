@@ -96,7 +96,7 @@ Introduced `OtaDownloadRequest` as a domain-level structure to encapsulate downl
 
 ## 6. Version Validation Has an Unchecked Optional Value
 
-**Status:** Resolved (Commit 9b28aee)
+**Status:** Resolved (Commit ddb85d5)
 
 ### Problem (Historical)
 
