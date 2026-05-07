@@ -44,30 +44,16 @@ Recommended changes:
 
 ## 2. Inconsistent Transport Configuration Between Manifest and Firmware Download
 
-### Problem
+**Status:** Resolved (Commit 7b7cf40)
 
-The component exposes a single `http_timeout_ms` in `OtaConfig`, but only the firmware download path uses it. Manifest fetching uses a hardcoded 5000 ms timeout inside `HttpClient`.
+### Problem (Historical)
 
-### Why It Matters
+The component previously exposed a single `http_timeout_ms` in `OtaConfig`, but only the firmware download path used it. Manifest fetching used a hardcoded 5000 ms timeout inside `HttpClient`.
 
-- Public API and runtime behavior do not match.
-- Manifest retrieval and firmware download behave differently under the same configuration.
-- HTTPS migration would add more transport complexity on top of an already inconsistent contract.
+### Resolution
 
-### Most Efficient Fix
+The component now uses explicit `TransportConfig` (containing `manifest_timeout_ms` and `firmware_timeout_ms`) within `OtaConfig`. `HttpClient::fetch` now accepts an explicit timeout parameter, ensuring consistent and configurable transport behavior for all network operations.
 
-Replace the current single transport knob with explicit transport settings and use them consistently in both paths.
-
-Recommended direction:
-
-1. Introduce transport-specific settings in `OtaConfig`.
-2. At minimum, split manifest timeout and firmware timeout.
-3. Ensure `HttpClient` and `OtaSession` consume configuration from the same source of truth.
-
-### Preferred Outcome
-
-- A coherent transport contract.
-- No hidden hardcoded timeout in concrete implementations.
 
 ## 3. Policy Is Enforced Only Partially by the Current OTA Flow
 
