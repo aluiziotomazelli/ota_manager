@@ -126,23 +126,22 @@ bool OtaManager::start_ota()
         return false;
     }
 
-    TaskHandle_t worker_handle = nullptr;
-    if (state_mutex_ != nullptr && deps_.task_scheduler.semaphore_take(state_mutex_, portMAX_DELAY) == pdPASS) {
-        worker_handle = ota_task_handle_;
-        deps_.task_scheduler.semaphore_give(state_mutex_);
-    }
+    if (state_mutex_ == nullptr) return false;
+    if (deps_.task_scheduler.semaphore_take(state_mutex_, portMAX_DELAY) != pdPASS) return false;
 
-    if (worker_handle == nullptr) {
+    if (ota_task_handle_ == nullptr) {
         BaseType_t ret = deps_.task_scheduler.create_task(
-            ota_task_func, "ota_worker", config_.task_stack_size, this, config_.task_priority, &ota_task_handle_);
-
+            ota_task_func, "ota_worker", config_.task_stack_size,
+            this, config_.task_priority, &ota_task_handle_);
         if (ret != pdPASS) {
+            deps_.task_scheduler.semaphore_give(state_mutex_);
             ESP_LOGE(TAG, "Failed to create OTA task");
             return false;
         }
     }
-
+    // Notifica enquanto ainda segura o mutex — handle está garantidamente válido
     deps_.task_scheduler.notify_task(ota_task_handle_, OTA_START_BIT, eSetBits);
+    deps_.task_scheduler.semaphore_give(state_mutex_);
     return true;
 }
 
@@ -204,8 +203,9 @@ void OtaManager::ota_task()
 
     while (!should_exit) {
         // Variable blocking: wait forever if idle/failed/pending, otherwise poll
+        OtaStatus current_status = get_status();
         TickType_t wait_time =
-            (status_ == OtaStatus::IDLE || status_ == OtaStatus::FAILED || status_ == OtaStatus::PENDING_VERIFY)
+            (current_status == OtaStatus::IDLE || current_status == OtaStatus::FAILED || current_status == OtaStatus::PENDING_VERIFY)
                 ? portMAX_DELAY
                 : 0;
 
@@ -227,7 +227,8 @@ void OtaManager::ota_task()
             }
 
             if ((notifications & OTA_START_BIT) == OTA_START_BIT) {
-                if (status_ == OtaStatus::IDLE || status_ == OtaStatus::FAILED) {
+                OtaStatus s = get_status();
+                if (s == OtaStatus::IDLE || s == OtaStatus::FAILED) {
                     set_status(OtaStatus::MANIFEST_FETCH);
                 }
                 // Clear the start bit
@@ -236,7 +237,7 @@ void OtaManager::ota_task()
         }
 
         OtaStepResult step_res = OtaStepResult::IN_PROGRESS;
-        switch (status_) {
+        switch (get_status()) {
         case OtaStatus::MANIFEST_FETCH:
             step_res = handle_manifest_state();
             if (step_res == OtaStepResult::SUCCESS) {
@@ -281,11 +282,8 @@ void OtaManager::ota_task()
             if (config_.restart_on_success) {
                 ESP_LOGI(TAG, "OTA Successful. Restarting...");
                 deps_.system.restart();
-                should_exit = true;
             }
-            else {
-                set_status(OtaStatus::IDLE);
-            }
+            should_exit = true;
             break;
 
         default:
@@ -308,6 +306,10 @@ void OtaManager::ota_task()
 // Private methods
 // ==================================================================================
 
+/**
+ * @brief Handles the manifest fetching state.
+ * @note This is a synchronous operation and never returns IN_PROGRESS.
+ */
 OtaStepResult OtaManager::handle_manifest_state()
 {
     std::string manifest_content;
@@ -333,6 +335,10 @@ OtaStepResult OtaManager::handle_manifest_state()
     return OtaStepResult::SUCCESS;
 }
 
+/**
+ * @brief Handles the version check state.
+ * @note This is a synchronous operation and never returns IN_PROGRESS.
+ */
 OtaStepResult OtaManager::handle_version_state()
 {
     // 1. Validate Device Type
@@ -369,6 +375,10 @@ OtaStepResult OtaManager::handle_version_state()
     return OtaStepResult::SUCCESS;
 }
 
+/**
+ * @brief Handles the firmware download state.
+ * @note This operation is iterative and returns IN_PROGRESS until complete.
+ */
 OtaStepResult OtaManager::handle_download_state()
 {
     // 1. Setup session if not active
@@ -425,6 +435,10 @@ OtaStepResult OtaManager::handle_download_state()
     return OtaStepResult::SUCCESS;
 }
 
+/**
+ * @brief Handles the firmware verification state.
+ * @note This is a synchronous operation and never returns IN_PROGRESS.
+ */
 OtaStepResult OtaManager::handle_verification_state()
 {
     uint8_t sha256[32];

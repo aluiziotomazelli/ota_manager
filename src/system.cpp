@@ -10,7 +10,7 @@ void System::restart()
     esp_restart();
 }
 
-const esp_app_desc_t* System::get_running_app_desc()
+const esp_app_desc_t* System::get_running_app_desc() const
 {
     return esp_app_get_description();
 }
@@ -19,7 +19,11 @@ esp_err_t System::get_partition_sha256(const esp_partition_t* partition, size_t 
 {
     mbedtls_sha256_context ctx;
     mbedtls_sha256_init(&ctx);
-    mbedtls_sha256_starts(&ctx, 0); // Removido _ret
+
+    if (mbedtls_sha256_starts(&ctx, 0) != 0) {
+        mbedtls_sha256_free(&ctx);
+        return ESP_FAIL;
+    }
 
     const size_t chunk_size = 4096;
     uint8_t* buffer = (uint8_t*)std::malloc(chunk_size);
@@ -36,11 +40,20 @@ esp_err_t System::get_partition_sha256(const esp_partition_t* partition, size_t 
         if (err != ESP_OK) {
             break;
         }
-        mbedtls_sha256_update(&ctx, buffer, read_len); // Removido _ret
+        
+        if (mbedtls_sha256_update(&ctx, buffer, read_len) != 0) {
+            err = ESP_FAIL;
+            break;
+        }
         offset += read_len;
     }
 
-    mbedtls_sha256_finish(&ctx, sha_256); // Removido _ret
+    if (err == ESP_OK) {
+        if (mbedtls_sha256_finish(&ctx, sha_256) != 0) {
+            err = ESP_FAIL;
+        }
+    }
+
     mbedtls_sha256_free(&ctx);
     std::free(buffer);
     return err;
