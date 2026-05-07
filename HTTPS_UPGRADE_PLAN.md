@@ -22,21 +22,21 @@ Acting as the Architecture Guardian, the following risks must be mitigated:
 - **Verification**: Ensure successful compilation of all components.
 
 ### Step 2: Manifest HAL Refactoring (HttpClient)
-- **Action**: Update `HttpClient::fetch` to populate `esp_http_client_config_t::cert_pem` from `OtaConfig`.
-- **File**: `src/http_client.cpp`
-- **Impact**: Enables SSL validation for manifest fetching.
-- **Verification**: Update `MockHttpClient` to verify the certificate is passed correctly.
+- **Action**: Inject `OtaConfig` (or at minimum `server_cert_pem`) into `HttpClient` via its **constructor**. The `IHttpClient::fetch` signature must remain unchanged — SSL details are internal to the HAL implementation, not part of the interface contract.
+- **File**: `include/http_client.hpp`, `src/http_client.cpp`
+- **Impact**: Enables SSL validation for manifest fetching without leaking SSL concerns into the interface or the orchestrator.
+- **Verification**: Since `MockHttpClient` mocks `IHttpClient` (which does not expose the certificate), SSL wiring is validated via the `test_build` on-target test or an integration test, not via the mock.
 
 ### Step 3: Download HAL Refactoring (OtaSession)
-- **Action**: Update `OtaSession::begin` to pass the certificate through to the `esp_https_ota_config_t`.
-- **File**: `src/ota_session.cpp`
-- **Impact**: Enables SSL validation for the firmware download stream.
-- **Verification**: Update `MockOtaSession`.
+- **Action**: Inject `server_cert_pem` into `OtaSession` via its **constructor** and use it to populate `esp_https_ota_config_t::http_config.cert_pem` inside `OtaSession::begin`. The `IOtaSession::begin` signature must remain unchanged.
+- **File**: `include/ota_session.hpp`, `src/ota_session.cpp`
+- **Impact**: Enables SSL validation for the firmware download stream without leaking SSL concerns into the interface.
+- **Verification**: SSL wiring is validated via the `test_build` on-target test. `MockOtaSession` does not change, as the interface contract is unaffected.
 
 ### Step 4: Security Policy Enforcement (OtaManager)
-- **Action**: Implement logic in `OtaManager` to validate the security context (e.g., warning if HTTPS is used without a certificate when insecure mode is disabled via SDKConfig).
+- **Action**: Implement purely data-driven validation in `OtaManager` to enforce security policy (e.g., log a warning if `config.server_cert_pem == nullptr` while the manifest URL uses `https://`). **No SSL headers or ESP-IDF SSL APIs may be included in `ota_manager.cpp`** — this logic must rely exclusively on `OtaConfig` fields.
 - **File**: `src/ota_manager.cpp`
-- **Impact**: Centralizes security business rules in the orchestrator.
+- **Impact**: Centralizes security business rules in the orchestrator without violating the HAL boundary.
 
 ### Step 5: Resource Management Documentation
 - **Action**: Add a guide on embedding certificates using `COMPONENT_EMBED_TXTFILES` in `CMakeLists.txt`.
