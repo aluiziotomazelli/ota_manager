@@ -97,7 +97,7 @@ extern "C" void app_main(void)
         .allow_same_version = false,
         .restart_on_success = true};
 
-    OtaManager ota_manager(deps, config);
+    OtaManager ota_manager(deps);
     g_ota_manager = &ota_manager;
     ota_manager.init(config);
 

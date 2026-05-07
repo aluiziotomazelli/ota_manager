@@ -31,6 +31,6 @@ extern "C" void app_main(void)
         .allow_same_version = true,
         .restart_on_success = true};
 
-    OtaManager ota_manager(deps, config);
+    OtaManager ota_manager(deps);
     ota_manager.init(config);
 }
