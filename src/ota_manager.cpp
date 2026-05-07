@@ -292,6 +292,20 @@ void OtaManager::ota_task()
     deps_.task_scheduler.delete_task(nullptr);
 }
 
+bool OtaManager::validate_url(const std::string& url) const
+{
+    if (config_.security.allow_http_during_development) {
+        return true;
+    }
+
+    if (url.rfind("https://", 0) == 0) {
+        return true;
+    }
+
+    ESP_LOGE(TAG, "Security policy violation: insecure URL not allowed: %s", url.c_str());
+    return false;
+}
+
 // ==================================================================================
 // Private methods
 // ==================================================================================
@@ -302,6 +316,10 @@ void OtaManager::ota_task()
  */
 OtaStepResult OtaManager::handle_manifest_state()
 {
+    if (!validate_url(config_.manifest_url)) {
+        return OtaStepResult::FAILED;
+    }
+
     std::string manifest_content;
     if (deps_.http_client.fetch(config_.manifest_url, manifest_content, config_.transport.manifest_timeout_ms) != ESP_OK) {
         ESP_LOGE(TAG, "Failed to fetch manifest from %s", config_.manifest_url.c_str());
@@ -373,6 +391,10 @@ OtaStepResult OtaManager::handle_download_state()
 {
     // 1. Setup session if not active
     if (!deps_.ota_session.is_active()) {
+        if (!validate_url(manifest_.firmware_url)) {
+            return OtaStepResult::FAILED;
+        }
+
         esp_http_client_config_t http_config = {};
         http_config.url = manifest_.firmware_url.c_str();
         http_config.timeout_ms = config_.transport.firmware_timeout_ms;

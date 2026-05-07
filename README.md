@@ -102,6 +102,9 @@ OtaConfig config = {
         .manifest_timeout_ms = 10000,
         .firmware_timeout_ms = 10000,
     },
+    .security = {
+        .allow_http_during_development = true,
+    },
     .allow_same_version = false,
     .restart_on_success = true
 };

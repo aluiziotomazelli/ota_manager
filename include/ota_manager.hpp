@@ -142,6 +142,14 @@ protected:
      */
     OtaManifest& get_manifest_ref() { return manifest_; }
 
+    /**
+     * @brief Validates if the given URL conforms to the security policy.
+     * 
+     * @param url The URL to validate
+     * @return true if valid, false otherwise
+     */
+    bool validate_url(const std::string& url) const;
+
 private:
     OtaDependencies deps_;          /**< Injected dependencies */
     OtaConfig config_;              /**< Configuration settings */

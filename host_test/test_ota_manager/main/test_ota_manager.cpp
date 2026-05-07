@@ -47,6 +47,7 @@ protected:
         .manifest_timeout_ms = 30000,
         .firmware_timeout_ms = 30000,
     },
+        .security = {.allow_http_during_development = true},
         .allow_same_version = true,
         .restart_on_success = true};
 
@@ -116,9 +117,49 @@ TEST_F(OtaManagerTest, InitGoesToIdleState)
     EXPECT_EQ(ota_manager.get_status(), OtaStatus::IDLE);
 }
 
-// ====================================================================
-// DEINIT TESTS
-// ====================================================================
+
+TEST_F(OtaManagerTest, SecurityPolicyBlocksInsecureManifestUrl)
+{
+    config.security.allow_http_during_development = false;
+    config.manifest_url = "http://insecure.com/manifest.json";
+    
+    OtaManagerTestable testable_manager(deps);
+    ASSERT_TRUE(testable_manager.init(config));
+
+    EXPECT_EQ(testable_manager.handle_manifest_state(), OtaStepResult::FAILED);
+}
+
+TEST_F(OtaManagerTest, SecurityPolicyBlocksInsecureFirmwareUrl)
+{
+    config.security.allow_http_during_development = false;
+    config.manifest_url = "https://secure.com/manifest.json"; // Use HTTPS for manifest
+    
+    OtaManagerTestable testable_manager(deps);
+    ASSERT_TRUE(testable_manager.init(config));
+
+    std::string manifest_content = R"({
+        "version": "1.2.3",
+        "device_type": "test",
+        "firmware_url": "http://insecure.com/fw.bin",
+        "sha256": "abcd1234"
+    })";
+
+    OtaManifest manifest;
+    manifest.version = {1, 2, 3};
+    manifest.device_type = "test";
+    manifest.firmware_url = "http://insecure.com/fw.bin";
+    manifest.sha256_hex = "abcd1234";
+
+    EXPECT_CALL(mock_http_client, fetch(config.manifest_url, ::testing::_, ::testing::_))
+        .WillOnce(DoAll(SetArgReferee<1>(manifest_content), Return(ESP_OK)));
+    EXPECT_CALL(mock_manifest_parser, parse(manifest_content)).WillOnce(Return(manifest));
+
+    // Manifest fetch succeeds with HTTPS
+    ASSERT_EQ(testable_manager.handle_manifest_state(), OtaStepResult::SUCCESS);
+    
+    // Download fails due to security policy
+    EXPECT_EQ(testable_manager.handle_download_state(), OtaStepResult::FAILED);
+}
 
 TEST_F(OtaManagerTest, DeinitSuccess)
 {

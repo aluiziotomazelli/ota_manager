@@ -61,6 +61,11 @@ struct TransportConfig
     uint32_t firmware_timeout_ms; /**< Timeout for firmware download (ms) */
 };
 
+struct OtaSecurityConfig
+{
+    bool allow_http_during_development = false; /**< Whether to allow insecure HTTP connections */
+};
+
 /**
  * @brief Configuration structure for the OTA manager.
  *
@@ -74,6 +79,7 @@ struct OtaConfig
     uint32_t task_stack_size; /**< Stack size for the OTA task */
     uint8_t task_priority;    /**< Priority for the OTA task */
     TransportConfig transport;    /**< Transport-specific settings */
+    OtaSecurityConfig security;   /**< Security settings */
     bool allow_same_version;  /**< Whether to allow updates to the same version */
     bool restart_on_success;  /**< Whether to automatically restart after successful update */
 };

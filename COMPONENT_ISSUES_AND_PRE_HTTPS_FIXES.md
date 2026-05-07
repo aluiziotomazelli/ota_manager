@@ -57,34 +57,16 @@ The component now uses explicit `TransportConfig` (containing `manifest_timeout_
 
 ## 3. Policy Is Enforced Only Partially by the Current OTA Flow
 
-### Problem
+**Status:** Resolved (Commit 7b7cf40)
 
-The component fetches a manifest URL from configuration and then trusts the firmware URL embedded in the manifest without applying a second transport policy check.
+### Problem (Historical)
 
-This is already a design gap even before HTTPS:
+The component previously trusted the firmware URL embedded in the manifest without applying independent transport policy checks, and domain rules were not explicitly enforced at both the manifest and firmware network boundaries.
 
-- `config.manifest_url` is controlled by the application.
-- `manifest.firmware_url` is controlled by remote content.
+### Resolution
 
-### Why It Matters
+Added `OtaSecurityConfig` to `OtaConfig` with an explicit `allow_http_during_development` flag. `OtaManager` now performs independent URL validation (ensuring HTTPS or adherence to development policy) for both the manifest fetch and the firmware download phases.
 
-- Future security policy can be bypassed by using a secure manifest that points to an insecure or unexpected firmware URL.
-- Domain rules are not expressed at the right points in the flow.
-
-### Most Efficient Fix
-
-Treat manifest fetch and firmware fetch as two independent policy gates.
-
-Recommended checks:
-
-1. Validate `config.manifest_url` before the manifest fetch.
-2. Validate `manifest.firmware_url` immediately after manifest parsing and before starting download.
-3. Make scheme policy explicit in configuration instead of relying on build flags alone.
-
-### Preferred Outcome
-
-- Clear policy enforcement at every network boundary.
-- No mixed-scheme surprises.
 
 ## 4. Transport and TLS Configuration Ownership Is Not Well Defined
 
