@@ -169,15 +169,7 @@ TEST_F(OtaManagerTaskTest, FullOtaSuccessFlow)
     ASSERT_TRUE(sut.start_ota());
 
     // 4. Wait for transitions
-    // We poll the status to ensure it reaches the end state or timeout
-    int timeout_ms = 1000;
-    int elapsed_ms = 0;
-    while (sut.get_status() != OtaStatus::READY_TO_RESTART && elapsed_ms < timeout_ms) {
-        vTaskDelay(pdMS_TO_TICKS(10));
-        elapsed_ms += 10;
-    }
-
-    EXPECT_EQ(sut.get_status(), OtaStatus::READY_TO_RESTART);
+    wait_for_status(OtaStatus::READY_TO_RESTART, 1000);
 }
 
 // ====================================================================
@@ -209,14 +201,7 @@ TEST_F(OtaManagerTaskTest, VersionCheckFailsForOlderVersion)
     ASSERT_TRUE(sut.start_ota());
 
     // 4. Wait for transition
-    int timeout_ms = 500;
-    int elapsed_ms = 0;
-    while (sut.get_status() != OtaStatus::FAILED && elapsed_ms < timeout_ms) {
-        vTaskDelay(pdMS_TO_TICKS(10));
-        elapsed_ms += 10;
-    }
-
-    EXPECT_EQ(sut.get_status(), OtaStatus::FAILED);
+    wait_for_status(OtaStatus::FAILED, 500);
 }
 
 // ====================================================================
@@ -251,14 +236,7 @@ TEST_F(OtaManagerTaskTest, DownloadFailsWhenSessionBeginFails)
     ASSERT_TRUE(sut.start_ota());
 
     // 4. Wait for transition
-    int timeout_ms = 500;
-    int elapsed_ms = 0;
-    while (sut.get_status() != OtaStatus::FAILED && elapsed_ms < timeout_ms) {
-        vTaskDelay(pdMS_TO_TICKS(10));
-        elapsed_ms += 10;
-    }
-
-    EXPECT_EQ(sut.get_status(), OtaStatus::FAILED);
+    wait_for_status(OtaStatus::FAILED, 500);
 }
 
 // ====================================================================
