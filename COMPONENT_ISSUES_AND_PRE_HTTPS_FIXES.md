@@ -70,29 +70,16 @@ Added `OtaSecurityConfig` to `OtaConfig` with an explicit `allow_http_during_dev
 
 ## 4. Transport and TLS Configuration Ownership Is Not Well Defined
 
-### Problem
+**Status:** Resolved (Commit 798bf40)
 
-`OtaConfig` is provided to `OtaManager::init()`, but the concrete transport objects are constructed earlier by the application. This creates an ownership mismatch if transport settings are supposed to be injected into `HttpClient` and `OtaSession` constructors.
+### Problem (Historical)
 
-### Why It Matters
+`OtaConfig` was provided to `OtaManager::init()`, but concrete transport objects were constructed earlier by the application, creating an ownership mismatch for configuration settings like timeouts and security policies.
 
-- The current API shape makes constructor injection awkward.
-- Configuration may end up duplicated between `OtaManager` and transport objects.
-- The caller can accidentally instantiate mismatched dependencies.
+### Resolution
 
-### Most Efficient Fix
+Consolidated configuration ownership within `OtaManager`. `OtaManager` now acts as the single source of truth for transport/security settings, deriving and pushing the necessary `esp_http_client_config_t` configurations to its dependencies at the time of execution.
 
-Redesign the public API so transport configuration has one owner.
-
-Recommended options:
-
-1. Preferred: let `OtaManager` receive transport request data through domain structs and push that into the concrete transport implementations at call time.
-2. Alternative: introduce a factory/builder that constructs `HttpClient`, `OtaSession`, and `OtaManager` from one shared configuration object.
-
-### Preferred Outcome
-
-- One source of truth for transport settings.
-- No duplicated TLS or timeout configuration in application code.
 
 ## 5. `IOtaSession` Is Not Actually Transport-Agnostic
 

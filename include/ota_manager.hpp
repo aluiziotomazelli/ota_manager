@@ -150,6 +150,15 @@ protected:
      */
     bool validate_url(const std::string& url) const;
 
+    /**
+     * @brief Creates an HTTP client configuration from the internal config.
+     * 
+     * @param url The URL to configure
+     * @param timeout_ms Timeout for the HTTP request
+     * @return esp_http_client_config_t configured structure
+     */
+    esp_http_client_config_t get_http_config(const std::string& url, uint32_t timeout_ms) const;
+
 private:
     OtaDependencies deps_;          /**< Injected dependencies */
     OtaConfig config_;              /**< Configuration settings */
