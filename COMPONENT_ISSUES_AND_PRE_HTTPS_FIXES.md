@@ -57,7 +57,7 @@ The component now uses explicit `TransportConfig` (containing `manifest_timeout_
 
 ## 3. Policy Is Enforced Only Partially by the Current OTA Flow
 
-**Status:** Resolved (Commit 7b7cf40)
+**Status:** Resolved (Commit 27b79eb)
 
 ### Problem (Historical)
 
