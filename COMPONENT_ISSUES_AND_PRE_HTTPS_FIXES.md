@@ -96,27 +96,16 @@ Introduced `OtaDownloadRequest` as a domain-level structure to encapsulate downl
 
 ## 6. Version Validation Has an Unchecked Optional Value
 
-### Problem
+**Status:** Resolved (Commit 9b28aee)
 
-During download setup, the code parses the running version and then calls `.value()` without checking that parsing succeeded.
+### Problem (Historical)
 
-### Why It Matters
+During download setup, the code parsed the running version and then called `.value()` without checking that parsing succeeded. A malformed running version string could lead to an unexpected runtime failure.
 
-- A malformed running version can turn into a runtime failure at an unexpected point.
-- The same validation is handled more carefully elsewhere in the flow.
+### Resolution
 
-### Most Efficient Fix
+Updated `OtaManager::handle_download_state()` to explicitly validate both `current_v_opt` and `new_v_opt` before comparing them. This ensures that a failure to parse either version string results in a graceful return of `OtaStepResult::FAILED`.
 
-Check both parsed versions explicitly before using them.
-
-Recommended changes:
-
-1. Validate `current_v_opt.has_value()` before `current_v_opt.value()`.
-2. Keep the error path symmetric with the existing `new_v_opt` handling.
-
-### Preferred Outcome
-
-- No hidden exceptional path in normal OTA execution.
 
 ## 7. HTTP-Only Development Support Is Tied Too Closely to Build Configuration
 

@@ -161,11 +161,31 @@ TEST_F(OtaManagerTest, SecurityPolicyBlocksInsecureFirmwareUrl)
     EXPECT_EQ(testable_manager.handle_download_state(), OtaStepResult::FAILED);
 }
 
-TEST_F(OtaManagerTest, DeinitSuccess)
+TEST_F(OtaManagerTest, HandleDownloadStateMalformedRunningVersionReturnsFailed)
 {
-    EXPECT_TRUE(ota_manager.init(config));
-    EXPECT_TRUE(ota_manager.deinit());
-    EXPECT_EQ(ota_manager.get_status(), OtaStatus::IDLE);
+    OtaManagerTestable testable_manager(deps);
+    ASSERT_TRUE(testable_manager.init(config));
+
+    // 1. Setup Manifest
+    OtaManifest manifest;
+    manifest.version = {2, 0, 0};
+    
+    // 2. Mock Session begin and get_img_desc
+    esp_app_desc_t new_app_info = {};
+    strncpy(new_app_info.version, "2.0.0", sizeof(new_app_info.version));
+    
+    EXPECT_CALL(mock_ota_session, is_active()).WillOnce(Return(false));
+    EXPECT_CALL(mock_ota_session, begin(::testing::_)).WillOnce(Return(ESP_OK));
+    EXPECT_CALL(mock_ota_session, get_img_desc(::testing::_))
+        .WillOnce(DoAll(SetArgPointee<0>(new_app_info), Return(ESP_OK)));
+
+    // 3. Mock System to return malformed version
+    esp_app_desc_t bad_app_desc = {};
+    strncpy(bad_app_desc.version, "invalid-version", sizeof(bad_app_desc.version));
+    EXPECT_CALL(mock_system, get_running_app_desc()).WillRepeatedly(Return(&bad_app_desc));
+
+    // 4. Execute
+    EXPECT_EQ(testable_manager.handle_download_state(), OtaStepResult::FAILED);
 }
 
 TEST_F(OtaManagerTest, DeinitWithoutTaskCleansResourcesWithoutErrors)

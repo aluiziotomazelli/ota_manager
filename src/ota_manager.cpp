@@ -417,7 +417,7 @@ OtaStepResult OtaManager::handle_download_state()
 
         auto current_v_opt = VersionHelper::parse(deps_.system.get_running_app_desc()->version);
         auto new_v_opt = VersionHelper::parse(new_app_info.version);
-        if (!new_v_opt.has_value() ||
+        if (!current_v_opt.has_value() || !new_v_opt.has_value() ||
             !is_version_newer(current_v_opt.value(), new_v_opt.value(), config_.allow_same_version)) {
             ESP_LOGE(TAG, "Image version validation failed: %s", new_app_info.version);
             deps_.ota_session.abort();
