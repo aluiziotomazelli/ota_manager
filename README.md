@@ -188,8 +188,8 @@ sha256sum firmware.bin
 
 For a streamlined development workflow, use the included OTA Test Server tools. It provides a CLI (`manage.py`) that automatically calculates the SHA-256 hash, determines firmware metadata, and generates a properly formatted `manifest.json`.
 
-- **Location**: `test_apps/ota_server/`
-- **Documentation**: See [OTA Test Server README](test_apps/ota_server/README.md) for full usage instructions and automation examples.
+- **Location**: `ota_server/`
+- **Documentation**: See [OTA Test Server README](ota_server/README.md) for full usage instructions and automation examples.
 
 ## Project Structure
 
@@ -200,12 +200,30 @@ ota_manager/
 │   │   ├── i_*.hpp
 │   ├── ota_manager.hpp         # Main public header
 │   └── ota_types.hpp           # Common data structures
-├── src/
+├── src/                        # Concrete HAL implementations + FSM
 │   ├── ota_manager.cpp         # Orchestration logic
-│   ├── manifest_parser.cpp     # JSON Parsing
-│   └── ...                     # Concrete HAL implementations
-├── host_test/                  # Host-based GTest suite
-└── test_apps/                  # On-device integration tests
+│   ├── http_client.cpp         # HTTP manifest fetch
+│   ├── ota_session.cpp         # esp_https_ota wrapper
+│   ├── manifest_parser.cpp     # JSON parsing
+│   ├── rollback_manager.cpp    # Rollback state management
+│   ├── system.cpp              # Partition hashing (mbedtls)
+│   └── version_helper.cpp      # SemVer parser
+├── host_test/                  # Host-based GTest + GMock suite
+│   └── test_ota_manager/
+├── examples/
+│   └── scenarios/              # On-target integration test scenarios
+│       ├── v1.0.0_base/
+│       ├── v1.1.0_success/
+│       ├── v1.2.0_failure/
+│       └── v1.3.0_security_failure/
+├── ota_server/                 # Local OTA test server (manage.py)
+├── test_apps/                  # Additional on-device tests
+│   └── test_build/
+└── docs/                       # Architecture and planning docs
+    ├── DESIGN.md
+    ├── API.md
+    ├── CHANGELOG.md
+    └── HTTPS_UPGRADE_PLAN.md
 ```
 
 ## Testing
@@ -220,9 +238,24 @@ cd host_test/test_ota_manager
 idf.py build
 ```
 
+### On-Target Integration Tests (Scenario Examples)
+
+The [`examples/scenarios/`](examples/scenarios/) directory contains **four firmware versions** that serve as on-target integration tests, exercising the full OTA lifecycle on real ESP32 hardware:
+
+| Scenario | Version | What It Validates |
+|----------|---------|-------------------|
+| `v1.0.0_base` | 1.0.0 | Base firmware, flashed via UART as the initial state |
+| `v1.1.0_success` | 1.1.0 | Successful OTA update flow (download, verify, reboot) |
+| `v1.2.0_failure` | 1.2.0 | Simulated bad firmware — bootloader automatic rollback after missing confirmation |
+| `v1.3.0_security_failure` | 1.3.0 | Security policy gate — rejects HTTP when `allow_http_during_development = false` |
+
+Each scenario includes its own `partitions.csv`, `sdkconfig.defaults`, and a `main.cpp` with Wi-Fi connection and button-triggered OTA. Together, they form a **progressive test sequence**: start with `v1.0.0_base`, OTA to `v1.1.0_success`, then to `v1.2.0_failure` (observe rollback), then to `v1.3.0_security_failure` (observe security policy rejection).
+
+For detailed instructions, see the [Scenarios README](examples/scenarios/README.md).
+
 ## Documentation
 
-- [`API.md`](API.md) - Detailed API reference (coming soon)
+- [`API.md`](API.md) - Complete API reference with data types, lifecycle methods, and usage example
 - [`DESIGN.md`](DESIGN.md) - Internal architecture and design decisions
 - [`CHANGELOG.md`](CHANGELOG.md) - Project history and releases
 

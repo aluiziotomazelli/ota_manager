@@ -3,13 +3,14 @@ version: "1.0.0"
 description: "OTA Manager component for ESP-IDF."
 maintainers:
   - "Aluizio Tomazelli <aluiziotomazelli@gmail.com>"
-  
 
 license: "MIT"
 
 tags:
   - ota_manager
   - esp32
+  - esp32s3
+  - esp32c3
   - cpp
 
 targets:
@@ -26,16 +27,14 @@ files:
   exclude:
     - "host_test/**/*"
     - "test_apps/**/*"
-    - "legacy_*/**/*"
-    - .clang-format
-    - .gitignore
-    
-  
+    - ".clang-format"
+    - ".gitignore"
+
 examples:
   - path: "examples/scenarios/v1.0.0_base"
   - path: "examples/scenarios/v1.1.0_success"
   - path: "examples/scenarios/v1.2.0_failure"
-
+  - path: "examples/scenarios/v1.3.0_security_failure"
 
 url: "https://github.com/aluiziotomazelli/ota_manager"
 repository: "https://github.com/aluiziotomazelli/ota_manager"

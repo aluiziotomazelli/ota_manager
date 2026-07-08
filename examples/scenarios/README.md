@@ -7,8 +7,9 @@ This directory contains a set of scenarios designed to validate the OTA (Over-th
 The examples are organized by version to simulate a real update lifecycle:
 
 1.  **`v1.0.0_base`**: The initial firmware version. This should be flashed to the device via cable (UART).
-2.  **`v1.1.0_success`**: A newer version used to test a successful update flow.
-3.  **`v1.2.0_failure`**: A version that simulates a "bad" firmware (e.g., fails sanity checks after boot) to test the automatic rollback functionality.
+2.  **`v1.1.0_success`**: A newer version used to test a successful update flow. Configures `allow_http_during_development = true` to permit HTTP downloads.
+3.  **`v1.2.0_failure`**: A version that simulates a "bad" firmware (e.g., fails sanity checks after boot) to test the automatic rollback functionality. It confirms itself only after simulated sanity checks fail, triggering `esp_restart()` to force the bootloader rollback.
+4.  **`v1.3.0_security_failure`**: A version that validates the **security policy enforcement** feature. It sets `allow_http_during_development = false` while the manifest URL still uses HTTP. When the OTA button is pressed, the `OtaManager` rejects the update immediately at the manifest URL validation stage — **before any network request is made** — and transitions to `FAILED` state. This proves that the security policy gate works correctly.
 
 ## Flash and Partitions
 
@@ -41,14 +42,30 @@ For detailed instructions, see the [OTA Server README](../../ota_server/README.m
 
 ## How to Run
 
-1.  **Flash Base**: Build and flash `v1.0.0_base` to your ESP32.
-2.  **Build other versions**: Build `v1.1.0_success` and `v1.2.0_failure` to generate the `.bin` files.
-3.  **Start Server**: Run the OTA server and use `manage.py deploy` to host the `.bin` files from the second scenario: `v1.1.0_success`.
+### Phase 1 — Successful Update (v1.0.0 → v1.1.0)
+
+1.  **Flash Base**: Build and flash `v1.0.0_base` to your ESP32 via UART.
+2.  **Build the success scenario**: Build `v1.1.0_success` to generate the firmware binary.
+3.  **Start Server**: Run the OTA server and use `manage.py deploy` to host the binary from `v1.1.0_success`.
 4.  **Trigger Update**: Press the **BOOT button** (GPIO 0 on ESP32/S3, GPIO 9 on C3) to initiate the OTA process.
-5.  **Observe**: Monitor the serial logs to see the status transitions and the version change after reboot.
-6.  **Deploy tird scenario**: Use `manage.py deploy` to host the `.bin` files from the third scenario: `v1.2.0_failure`.
-7.  **Trigger Update**: Press the **BOOT button** (GPIO 0 on ESP32/S3, GPIO 9 on C3) to initiate the OTA process.
-8.  **Observe**: Monitor the serial logs to see the OTA, when the v1.2.0 is booted and it is not confirmed, it should rollback to v1.1.0.
-9. **Build and Deploy Security Test**: Build `v1.3.0_security_failure` and host its binaries using the OTA server.
-10. **Trigger OTA**: With the device running `v1.1.0`, press the **BOOT button** to update to `v1.3.0`.
-11. **Trigger Security Test**: Once the device is running `v1.3.0`, press the **BOOT button** again. The second OTA attempt will fail immediately because `allow_http_during_development = false` and the manifest URL still uses HTTP. The failure happens before any download, during manifest URL validation.
+5.  **Observe**: Monitor the serial logs to see the status transitions. The device should download v1.1.0, verify it, and reboot into the new version.
+
+### Phase 2 — Rollback Test (v1.1.0 → v1.2.0 → rollback to v1.1.0)
+
+6.  **Build the failure scenario**: Build `v1.2.0_failure` to generate the firmware binary.
+7.  **Deploy**: Use `manage.py deploy` to host the binary from `v1.2.0_failure`.
+8.  **Trigger Update**: Press the **BOOT button** to initiate the OTA process.
+9.  **Observe**: The device downloads and boots v1.2.0. That firmware simulates a sanity check failure and calls `esp_restart()`. The bootloader detects the image was not confirmed and automatically rolls back to v1.1.0.
+
+### Phase 3 — Security Policy Test (v1.1.0 → v1.3.0 → policy blocks HTTP)
+
+10. **Build the security test scenario**: Build `v1.3.0_security_failure` to generate the firmware binary.
+11. **Deploy**: Use `manage.py deploy` to host the binary from `v1.3.0_security_failure`.
+12. **Update to v1.3.0**: With the device running v1.1.0 (which has `allow_http_during_development = true`), press the **BOOT button**. The update to v1.3.0 succeeds, and the device reboots.
+13. **Trigger the security test**: Now the device is running v1.3.0, which has `allow_http_during_development = false`. Press the **BOOT button** again. The `OtaManager` immediately rejects the manifest URL (`http://...`) and transitions to `FAILED` — **before any network request is made**.
+14. **Observe**: The serial log will show:
+    ```
+    OtaManager: Security policy violation: insecure URL not allowed: http://...
+    main: OTA Failed as expected due to security policy!
+    ```
+    The device remains on v1.3.0. This proves the security policy enforcement gate is working correctly.
