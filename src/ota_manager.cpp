@@ -135,7 +135,7 @@ bool OtaManager::start_ota()
             return false;
         }
     }
-    // Notifica enquanto ainda segura o mutex — handle está garantidamente válido
+    // Notify while still holding the mutex so the handle remains valid
     deps_.task_scheduler.notify_task(ota_task_handle_, OTA_START_BIT, eSetBits);
     deps_.task_scheduler.semaphore_give(state_mutex_);
     return true;
