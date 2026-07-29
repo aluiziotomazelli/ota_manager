@@ -34,6 +34,14 @@ public:
     /** @brief Returns the current status of the OTA manager. */
     virtual OtaStatus get_status() const = 0;
 
+    /**
+     * @brief Returns the specific failure reason when status is FAILED.
+     *
+     * @return OtaFailReason code, or OtaFailReason::NONE if no failure has occurred.
+     * @note Only meaningful when get_status() == OtaStatus::FAILED.
+     */
+    virtual OtaFailReason get_last_error() const = 0;
+
     /** @brief Checks if a newly downloaded image is pending verification. */
     virtual bool check_pending_verify() const = 0;
 

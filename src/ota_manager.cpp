@@ -122,6 +122,8 @@ bool OtaManager::start_ota()
         return false;
     }
 
+    last_fail_reason_ = OtaFailReason::NONE;
+
     if (state_mutex_ == nullptr) return false;
     if (deps_.task_scheduler.semaphore_take(state_mutex_, portMAX_DELAY) != pdPASS) return false;
 
@@ -144,6 +146,7 @@ bool OtaManager::start_ota()
 void OtaManager::cancel_ota()
 {
     deps_.ota_session.abort();
+    last_fail_reason_ = OtaFailReason::NONE;
 
     TaskHandle_t worker_handle = nullptr;
     if (state_mutex_ != nullptr && deps_.task_scheduler.semaphore_take(state_mutex_, portMAX_DELAY) == pdPASS) {
@@ -169,6 +172,21 @@ OtaStatus OtaManager::get_status() const
     OtaStatus current_status = status_;
     deps_.task_scheduler.semaphore_give(state_mutex_);
     return current_status;
+}
+
+OtaFailReason OtaManager::get_last_error() const
+{
+    if (state_mutex_ == nullptr) {
+        return last_fail_reason_;
+    }
+
+    if (deps_.task_scheduler.semaphore_take(state_mutex_, portMAX_DELAY) != pdPASS) {
+        return last_fail_reason_;
+    }
+
+    OtaFailReason current_reason = last_fail_reason_;
+    deps_.task_scheduler.semaphore_give(state_mutex_);
+    return current_reason;
 }
 
 bool OtaManager::check_pending_verify() const
@@ -317,18 +335,21 @@ bool OtaManager::validate_url(const std::string& url) const
 OtaStepResult OtaManager::handle_manifest_state()
 {
     if (!validate_url(config_.manifest_url)) {
+        last_fail_reason_ = OtaFailReason::MANIFEST_URL_INVALID;
         return OtaStepResult::FAILED;
     }
 
     std::string manifest_content;
     if (deps_.http_client.fetch(config_.manifest_url, manifest_content, config_.transport.manifest_timeout_ms) != ESP_OK) {
         ESP_LOGE(TAG, "Failed to fetch manifest from %s", config_.manifest_url.c_str());
+        last_fail_reason_ = OtaFailReason::MANIFEST_HTTP_FAIL;
         return OtaStepResult::FAILED;
     }
 
     auto manifest_opt = deps_.manifest_parser.parse(manifest_content);
     if (!manifest_opt.has_value()) {
         ESP_LOGE(TAG, "Failed to parse manifest JSON");
+        last_fail_reason_ = OtaFailReason::MANIFEST_INVALID;
         return OtaStepResult::FAILED;
     }
 
@@ -356,6 +377,7 @@ OtaStepResult OtaManager::handle_version_state()
             "Device type mismatch: manifest=%s, config=%s",
             manifest_.device_type.c_str(),
             config_.device_type.c_str());
+        last_fail_reason_ = OtaFailReason::DEVICE_TYPE_MISMATCH;
         return OtaStepResult::FAILED;
     }
 
@@ -364,6 +386,7 @@ OtaStepResult OtaManager::handle_version_state()
     auto current_v_opt = VersionHelper::parse(running_app->version);
     if (!current_v_opt.has_value()) {
         ESP_LOGE(TAG, "Failed to parse current version string: %s", running_app->version);
+        last_fail_reason_ = OtaFailReason::CURRENT_VERSION_PARSE_FAIL;
         return OtaStepResult::FAILED;
     }
 
@@ -376,6 +399,7 @@ OtaStepResult OtaManager::handle_version_state()
             manifest_.version.major,
             manifest_.version.minor,
             manifest_.version.patch);
+        last_fail_reason_ = OtaFailReason::VERSION_NOT_NEWER;
         return OtaStepResult::FAILED;
     }
 
@@ -392,6 +416,7 @@ OtaStepResult OtaManager::handle_download_state()
     // 1. Setup session if not active
     if (!deps_.ota_session.is_active()) {
         if (!validate_url(manifest_.firmware_url)) {
+            last_fail_reason_ = OtaFailReason::FIRMWARE_URL_INVALID;
             return OtaStepResult::FAILED;
         }
 
@@ -402,16 +427,16 @@ OtaStepResult OtaManager::handle_download_state()
         if (deps_.ota_session.begin(request) != ESP_OK) {
             ESP_LOGE(TAG, "Failed to begin OTA session");
             deps_.ota_session.abort();
+            last_fail_reason_ = OtaFailReason::DOWNLOAD_SESSION_FAIL;
             return OtaStepResult::FAILED;
         }
-
-
 
         // Verify image descriptor (extra safety)
         esp_app_desc_t new_app_info;
         if (deps_.ota_session.get_img_desc(&new_app_info) != ESP_OK) {
             ESP_LOGE(TAG, "Failed to get image descriptor");
             deps_.ota_session.abort();
+            last_fail_reason_ = OtaFailReason::DOWNLOAD_IMAGE_DESC_FAIL;
             return OtaStepResult::FAILED;
         }
 
@@ -421,6 +446,7 @@ OtaStepResult OtaManager::handle_download_state()
             !is_version_newer(current_v_opt.value(), new_v_opt.value(), config_.allow_same_version)) {
             ESP_LOGE(TAG, "Image version validation failed: %s", new_app_info.version);
             deps_.ota_session.abort();
+            last_fail_reason_ = OtaFailReason::DOWNLOAD_IMAGE_VERSION_FAIL;
             return OtaStepResult::FAILED;
         }
         ESP_LOGI(TAG, "OTA session initialized, starting download...");
@@ -436,12 +462,14 @@ OtaStepResult OtaManager::handle_download_state()
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Download failed: %s", esp_err_to_name(ret));
         deps_.ota_session.abort();
+        last_fail_reason_ = OtaFailReason::DOWNLOAD_HTTP_FAIL;
         return OtaStepResult::FAILED;
     }
 
     // 3. Cleanup session on success
     if (deps_.ota_session.finish() != ESP_OK) {
         ESP_LOGE(TAG, "Failed to finish OTA session");
+        last_fail_reason_ = OtaFailReason::DOWNLOAD_FINISH_FAIL;
         return OtaStepResult::FAILED;
     }
 
@@ -460,11 +488,13 @@ OtaStepResult OtaManager::handle_verification_state()
 
     if (update_partition == nullptr) {
         ESP_LOGE(TAG, "Failed to get update partition");
+        last_fail_reason_ = OtaFailReason::HASH_PARTITION_FAIL;
         return OtaStepResult::FAILED;
     }
 
     if (deps_.system.get_partition_sha256(update_partition, manifest_.firmware_size, sha256) != ESP_OK) {
         ESP_LOGE(TAG, "Failed to calculate SHA256 for partition");
+        last_fail_reason_ = OtaFailReason::HASH_PARTITION_FAIL;
         return OtaStepResult::FAILED;
     }
 
@@ -472,6 +502,7 @@ OtaStepResult OtaManager::handle_verification_state()
     if (calculated_hash != manifest_.sha256_hex) {
         ESP_LOGE(
             TAG, "Hash mismatch! Manifest: %s, Calculated: %s", manifest_.sha256_hex.c_str(), calculated_hash.c_str());
+        last_fail_reason_ = OtaFailReason::HASH_MISMATCH;
         return OtaStepResult::FAILED;
     }
 

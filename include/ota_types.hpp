@@ -29,6 +29,30 @@ enum class OtaStepResult
 };
 
 /**
+ * @brief Detailed failure reason codes for OTA update operations.
+ *
+ * Valid only when OtaStatus is FAILED. Reset to NONE on start_ota() and cancel_ota().
+ */
+enum class OtaFailReason
+{
+    NONE,                        /**< No error / operation in progress or successful */
+    MANIFEST_HTTP_FAIL,          /**< Failed to download manifest file (HTTP/network error) */
+    MANIFEST_INVALID,            /**< Manifest JSON format or required fields are invalid */
+    DEVICE_TYPE_MISMATCH,        /**< Manifest device_type does not match node configuration */
+    CURRENT_VERSION_PARSE_FAIL,  /**< Failed to parse current running version string */
+    VERSION_NOT_NEWER,           /**< Manifest version is not newer than running version */
+    FIRMWARE_URL_INVALID,        /**< Firmware URL failed security policy validation */
+    DOWNLOAD_SESSION_FAIL,       /**< Failed to begin OTA download session */
+    DOWNLOAD_IMAGE_DESC_FAIL,    /**< Failed to read image descriptor from download stream */
+    DOWNLOAD_IMAGE_VERSION_FAIL, /**< Downloaded image version validation failed */
+    DOWNLOAD_HTTP_FAIL,          /**< Firmware binary download failed mid-stream */
+    DOWNLOAD_FINISH_FAIL,        /**< Failed to finalize OTA session (flash commit) */
+    HASH_PARTITION_FAIL,         /**< Failed to access or read OTA partition for hash */
+    HASH_MISMATCH,               /**< SHA-256 validation failed for downloaded image */
+    MANIFEST_URL_INVALID,        /**< Manifest URL failed security policy validation */
+};
+
+/**
  * @brief Struct representing a semantic version number.
  *
  * Contains major, minor, and patch version components.

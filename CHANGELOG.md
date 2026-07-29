@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [1.1.0] - 2026-07-29
+
+### Added
+- **`OtaFailReason` Enum**: Detailed failure reason codes (`MANIFEST_HTTP_FAIL`, `MANIFEST_INVALID`, `DEVICE_TYPE_MISMATCH`, `VERSION_NOT_NEWER`, `DOWNLOAD_HTTP_FAIL`, `HASH_MISMATCH`, etc.) to pinpoint exact OTA error causes.
+- **`get_last_error()` API**: Exposed `virtual OtaFailReason get_last_error() const = 0` on `IOtaManager` interface to allow callers and telemetry to query detailed failure reasons when `get_status() == OtaStatus::FAILED`.
+
+### Changed
+- Updated unit test suite (`test_ota_manager.cpp`) with assertions for `get_last_error()` and error state reset behavior on `start_ota()` / `cancel_ota()`.
+
 ## [1.0.0] - 2026-05-05
 
 ### Added

@@ -1,5 +1,5 @@
 # OTA Manager Component Manifest
-version: "1.0.0"
+version: "1.1.0"
 description: "OTA Manager component for ESP-IDF."
 maintainers:
   - "Aluizio Tomazelli <aluiziotomazelli@gmail.com>"

@@ -956,3 +956,26 @@ TEST_F(OtaManagerTest, HandleDownloadStateDownloadCompleteSuccess)
 
     EXPECT_EQ(testable_manager.handle_download_state(), OtaStepResult::SUCCESS);
 }
+
+TEST_F(OtaManagerTest, GetLastErrorReturnsCorrectReasonOnFailures)
+{
+    OtaManagerTestable testable_manager(deps);
+    ASSERT_TRUE(testable_manager.init(config));
+
+    EXPECT_EQ(testable_manager.get_last_error(), OtaFailReason::NONE);
+
+    // Test Manifest Fetch HTTP failure
+    EXPECT_CALL(mock_http_client, fetch(config.manifest_url, ::testing::_, ::testing::_))
+        .WillOnce(Return(ESP_FAIL));
+
+    EXPECT_EQ(testable_manager.handle_manifest_state(), OtaStepResult::FAILED);
+    EXPECT_EQ(testable_manager.get_last_error(), OtaFailReason::MANIFEST_HTTP_FAIL);
+
+    // Test start_ota resets last error
+    EXPECT_CALL(mock_task_scheduler, create_task(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .WillOnce(DoAll(SetArgPointee<5>(fake_task), Return(pdPASS)));
+    EXPECT_CALL(mock_task_scheduler, notify_task(fake_task, ::testing::_, ::testing::_)).WillOnce(Return(pdPASS));
+
+    EXPECT_TRUE(testable_manager.start_ota());
+    EXPECT_EQ(testable_manager.get_last_error(), OtaFailReason::NONE);
+}

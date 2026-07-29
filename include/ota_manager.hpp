@@ -81,7 +81,10 @@ public:
     
     /** @copydoc IOtaManager::get_status() */
     OtaStatus get_status() const override;
-    
+
+    /** @copydoc IOtaManager::get_last_error() */
+    OtaFailReason get_last_error() const override;
+
     /** @copydoc IOtaManager::check_pending_verify() */
     bool check_pending_verify() const override;
     
@@ -154,6 +157,7 @@ private:
     OtaDependencies deps_;          /**< Injected dependencies */
     OtaConfig config_;              /**< Configuration settings */
     OtaStatus status_;              /**< Current OTA status */
+    OtaFailReason last_fail_reason_ = OtaFailReason::NONE; /**< Last failure reason (valid when status_ == FAILED) */
     TaskHandle_t ota_task_handle_ = nullptr;    /**< Handle to the OTA FreeRTOS task */
 
     OtaManifest manifest_;          /**< Parsed manifest data */
