@@ -23,9 +23,9 @@ enum class OtaStatus
  */
 enum class OtaStepResult
 {
-    SUCCESS,      /**< Step completed successfully, proceed to next state */
-    FAILED,       /**< Step encountered an error, transition to FAILED */
-    IN_PROGRESS   /**< Step is ongoing (only used by handle_download_state) */
+    SUCCESS,    /**< Step completed successfully, proceed to next state */
+    FAILED,     /**< Step encountered an error, transition to FAILED */
+    IN_PROGRESS /**< Step is ongoing (only used by handle_download_state) */
 };
 
 /**
@@ -35,21 +35,21 @@ enum class OtaStepResult
  */
 enum class OtaFailReason
 {
-    NONE,                        /**< No error / operation in progress or successful */
-    MANIFEST_HTTP_FAIL,          /**< Failed to download manifest file (HTTP/network error) */
-    MANIFEST_INVALID,            /**< Manifest JSON format or required fields are invalid */
-    DEVICE_TYPE_MISMATCH,        /**< Manifest device_type does not match node configuration */
-    CURRENT_VERSION_PARSE_FAIL,  /**< Failed to parse current running version string */
-    VERSION_NOT_NEWER,           /**< Manifest version is not newer than running version */
-    FIRMWARE_URL_INVALID,        /**< Firmware URL failed security policy validation */
-    DOWNLOAD_SESSION_FAIL,       /**< Failed to begin OTA download session */
-    DOWNLOAD_IMAGE_DESC_FAIL,    /**< Failed to read image descriptor from download stream */
-    DOWNLOAD_IMAGE_VERSION_FAIL, /**< Downloaded image version validation failed */
-    DOWNLOAD_HTTP_FAIL,          /**< Firmware binary download failed mid-stream */
-    DOWNLOAD_FINISH_FAIL,        /**< Failed to finalize OTA session (flash commit) */
-    HASH_PARTITION_FAIL,         /**< Failed to access or read OTA partition for hash */
-    HASH_MISMATCH,               /**< SHA-256 validation failed for downloaded image */
-    MANIFEST_URL_INVALID,        /**< Manifest URL failed security policy validation */
+    NONE = 0,                        /**< No error / operation in progress or successful */
+    MANIFEST_HTTP_FAIL = 1,          /**< Failed to download manifest file (HTTP/network error) */
+    MANIFEST_INVALID = 2,            /**< Manifest JSON format or required fields are invalid */
+    DEVICE_TYPE_MISMATCH = 3,        /**< Manifest device_type does not match node configuration */
+    CURRENT_VERSION_PARSE_FAIL = 4,  /**< Failed to parse current running version string */
+    VERSION_NOT_NEWER = 5,           /**< Manifest version is not newer than running version */
+    FIRMWARE_URL_INVALID = 6,        /**< Firmware URL failed security policy validation */
+    DOWNLOAD_SESSION_FAIL = 7,       /**< Failed to begin OTA download session */
+    DOWNLOAD_IMAGE_DESC_FAIL = 8,    /**< Failed to read image descriptor from download stream */
+    DOWNLOAD_IMAGE_VERSION_FAIL = 9, /**< Downloaded image version validation failed */
+    DOWNLOAD_HTTP_FAIL = 10,         /**< Firmware binary download failed mid-stream */
+    DOWNLOAD_FINISH_FAIL = 11,       /**< Failed to finalize OTA session (flash commit) */
+    HASH_PARTITION_FAIL = 12,        /**< Failed to access or read OTA partition for hash */
+    HASH_MISMATCH = 13,              /**< SHA-256 validation failed for downloaded image */
+    MANIFEST_URL_INVALID = 14,       /**< Manifest URL failed security policy validation */
 };
 
 /**
@@ -90,9 +90,10 @@ struct OtaSecurityConfig
     bool allow_http_during_development = false; /**< Whether to allow insecure HTTP connections */
 };
 
-struct OtaDownloadRequest {
-    std::string url;            /**< URL to download the firmware image */
-    uint32_t timeout_ms;        /**< Timeout for the download request */
+struct OtaDownloadRequest
+{
+    std::string url;     /**< URL to download the firmware image */
+    uint32_t timeout_ms; /**< Timeout for the download request */
 };
 
 /**
@@ -103,12 +104,12 @@ struct OtaDownloadRequest {
  */
 struct OtaConfig
 {
-    std::string device_type;  /**< Device type to check in manifest compatibility */
-    std::string manifest_url; /**< URL to fetch the OTA manifest from */
-    uint32_t task_stack_size; /**< Stack size for the OTA task */
-    uint8_t task_priority;    /**< Priority for the OTA task */
-    TransportConfig transport;    /**< Transport-specific settings */
-    OtaSecurityConfig security;   /**< Security settings */
-    bool allow_same_version;  /**< Whether to allow updates to the same version */
-    bool restart_on_success;  /**< Whether to automatically restart after successful update */
+    std::string device_type;    /**< Device type to check in manifest compatibility */
+    std::string manifest_url;   /**< URL to fetch the OTA manifest from */
+    uint32_t task_stack_size;   /**< Stack size for the OTA task */
+    uint8_t task_priority;      /**< Priority for the OTA task */
+    TransportConfig transport;  /**< Transport-specific settings */
+    OtaSecurityConfig security; /**< Security settings */
+    bool allow_same_version;    /**< Whether to allow updates to the same version */
+    bool restart_on_success;    /**< Whether to automatically restart after successful update */
 };
