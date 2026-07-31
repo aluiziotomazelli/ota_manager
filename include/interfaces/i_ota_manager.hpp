@@ -7,7 +7,8 @@
  *
  * Provides a passive, dependency-injected API for managing the OTA update flow.
  */
-class IOtaManager {
+class IOtaManager
+{
 public:
     virtual ~IOtaManager() = default;
 
@@ -41,6 +42,9 @@ public:
      * @note Only meaningful when get_status() == OtaStatus::FAILED.
      */
     virtual OtaFailReason get_last_error() const = 0;
+
+    /** @brief Returns the version of the currently running firmware, if valid. */
+    virtual std::optional<OtaVersion> get_running_version() const = 0;
 
     /** @brief Checks if a newly downloaded image is pending verification. */
     virtual bool check_pending_verify() const = 0;

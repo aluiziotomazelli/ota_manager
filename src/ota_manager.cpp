@@ -124,13 +124,14 @@ bool OtaManager::start_ota()
 
     last_fail_reason_ = OtaFailReason::NONE;
 
-    if (state_mutex_ == nullptr) return false;
-    if (deps_.task_scheduler.semaphore_take(state_mutex_, portMAX_DELAY) != pdPASS) return false;
+    if (state_mutex_ == nullptr)
+        return false;
+    if (deps_.task_scheduler.semaphore_take(state_mutex_, portMAX_DELAY) != pdPASS)
+        return false;
 
     if (ota_task_handle_ == nullptr) {
         BaseType_t ret = deps_.task_scheduler.create_task(
-            ota_task_func, "ota_worker", config_.task_stack_size,
-            this, config_.task_priority, &ota_task_handle_);
+            ota_task_func, "ota_worker", config_.task_stack_size, this, config_.task_priority, &ota_task_handle_);
         if (ret != pdPASS) {
             deps_.task_scheduler.semaphore_give(state_mutex_);
             ESP_LOGE(TAG, "Failed to create OTA task");
@@ -189,6 +190,15 @@ OtaFailReason OtaManager::get_last_error() const
     return current_reason;
 }
 
+std::optional<OtaVersion> OtaManager::get_running_version() const
+{
+    const esp_app_desc_t* running_app = deps_.system.get_running_app_desc();
+    if (running_app != nullptr && running_app->magic_word == ESP_APP_DESC_MAGIC_WORD) {
+        return VersionHelper::parse(running_app->version);
+    }
+    return std::nullopt;
+}
+
 bool OtaManager::check_pending_verify() const
 {
     return deps_.rollback_manager.is_pending_verify();
@@ -218,10 +228,10 @@ void OtaManager::ota_task()
     while (!should_exit) {
         // Variable blocking: wait forever if idle/failed/pending, otherwise poll
         OtaStatus current_status = get_status();
-        TickType_t wait_time =
-            (current_status == OtaStatus::IDLE || current_status == OtaStatus::FAILED || current_status == OtaStatus::PENDING_VERIFY)
-                ? portMAX_DELAY
-                : 0;
+        TickType_t wait_time = (current_status == OtaStatus::IDLE || current_status == OtaStatus::FAILED ||
+                                current_status == OtaStatus::PENDING_VERIFY)
+                                   ? portMAX_DELAY
+                                   : 0;
 
         // Peek at notifications
         if (deps_.task_scheduler.task_notify_wait(0, 0, &notifications, wait_time) == pdPASS) {
@@ -340,7 +350,8 @@ OtaStepResult OtaManager::handle_manifest_state()
     }
 
     std::string manifest_content;
-    if (deps_.http_client.fetch(config_.manifest_url, manifest_content, config_.transport.manifest_timeout_ms) != ESP_OK) {
+    if (deps_.http_client.fetch(config_.manifest_url, manifest_content, config_.transport.manifest_timeout_ms) !=
+        ESP_OK) {
         ESP_LOGE(TAG, "Failed to fetch manifest from %s", config_.manifest_url.c_str());
         last_fail_reason_ = OtaFailReason::MANIFEST_HTTP_FAIL;
         return OtaStepResult::FAILED;
