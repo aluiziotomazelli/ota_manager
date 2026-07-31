@@ -21,6 +21,7 @@ Complete API documentation for the OTA Manager component. This reference covers 
 - [Status and Validation](#status-and-validation)
   - [`get_status()`](#get_status)
   - [`get_last_error()`](#get_last_error)
+  - [`get_running_version()`](#get_running_version)
   - [`check_pending_verify()`](#check_pending_verify)
   - [`confirm_app_valid()`](#confirm_app_valid)
   - [`rollback_and_reboot()`](#rollback_and_reboot)
@@ -204,6 +205,16 @@ OtaFailReason get_last_error() const;
 ```
 
 - **Returns:** `OtaFailReason` code representing the specific cause of failure, or `OtaFailReason::NONE` if no failure has occurred. This method is thread-safe. Only valid when `get_status() == OtaStatus::FAILED`.
+
+### `get_running_version()`
+
+Returns the semantic version of the currently running firmware image, if valid.
+
+```cpp
+std::optional<OtaVersion> get_running_version() const;
+```
+
+- **Returns:** `std::optional<OtaVersion>` containing `OtaVersion` (major, minor, patch) if the current running app partition metadata could be retrieved, or `std::nullopt` if version retrieval failed.
 
 ### `check_pending_verify()`
 

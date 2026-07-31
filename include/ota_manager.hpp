@@ -86,7 +86,7 @@ public:
     OtaFailReason get_last_error() const override;
 
     /** @copydoc IOtaManager::get_running_version() */
-    virtual std::optional<OtaVersion> get_running_version() const override;
+    std::optional<OtaVersion> get_running_version() const override;
 
     /** @copydoc IOtaManager::check_pending_verify() */
     bool check_pending_verify() const override;
