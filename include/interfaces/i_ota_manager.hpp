@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include "ota_types.hpp"
 
 /**
