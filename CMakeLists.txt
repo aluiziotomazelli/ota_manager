@@ -34,7 +34,7 @@ idf_component_register(
 )
 
 if(IDF_TARGET STREQUAL "linux")
-    target_include_directories(${COMPONENT_LIB} PRIVATE "host_test/common")
+    target_include_directories(${COMPONENT_LIB} PRIVATE "host_test/mocks")
     target_compile_options(${COMPONENT_LIB} PUBLIC --coverage)
     target_link_options(${COMPONENT_LIB} PUBLIC --coverage)
 endif()
