@@ -7,7 +7,7 @@ idf_component_register(
         "test_manifest_parser.cpp"
     INCLUDE_DIRS
         "."
-        "../../common"
+        "../../mocks"
     REQUIRES
         gtest
         ota_manager

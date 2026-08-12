@@ -9,11 +9,11 @@ get_filename_component(PROJECT_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 list(APPEND EXTRA_COMPONENT_DIRS
     "${PROJECT_ROOT}"
     "${PROJECT_ROOT}/host_test/gtest"
-    "${PROJECT_ROOT}/host_test/common"
+    "${PROJECT_ROOT}/host_test/mocks"
 )
 
 # Set global include path for our mocks and stubs
-include_directories("${PROJECT_ROOT}/host_test/common")
+include_directories("${PROJECT_ROOT}/host_test/mocks")
 
 # Explicitly list the components to be included in the build.
 set(COMPONENTS 
