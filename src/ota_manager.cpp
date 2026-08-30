@@ -138,6 +138,11 @@ bool OtaManager::start_ota()
             return false;
         }
     }
+
+    // Clear any residual/stale cancel or start bits before notifying the task to start
+    uint32_t stale_notifications = 0;
+    deps_.task_scheduler.task_notify_wait(0, (OTA_START_BIT | OTA_CANCEL_BIT | OTA_STOP_BIT), &stale_notifications, 0);
+
     // Notify while still holding the mutex so the handle remains valid
     deps_.task_scheduler.notify_task(ota_task_handle_, OTA_START_BIT, eSetBits);
     deps_.task_scheduler.semaphore_give(state_mutex_);
@@ -233,8 +238,8 @@ void OtaManager::ota_task()
                                    ? portMAX_DELAY
                                    : 0;
 
-        // Peek at notifications
-        if (deps_.task_scheduler.task_notify_wait(0, 0, &notifications, wait_time) == pdPASS) {
+        // Atomically fetch and clear incoming notification bits
+        if (deps_.task_scheduler.task_notify_wait(0, (OTA_START_BIT | OTA_STOP_BIT | OTA_CANCEL_BIT), &notifications, wait_time) == pdPASS) {
             if ((notifications & OTA_STOP_BIT) == OTA_STOP_BIT) {
                 deps_.ota_session.abort(); // Ensure session is closed if task stops
                 should_exit = true;
@@ -245,8 +250,6 @@ void OtaManager::ota_task()
                 ESP_LOGI(TAG, "OTA cancellation requested");
                 deps_.ota_session.abort();
                 set_status(OtaStatus::IDLE);
-                // Clear the bits we just processed
-                deps_.task_scheduler.task_notify_wait(0, (OTA_CANCEL_BIT | OTA_START_BIT), &notifications, 0);
                 continue;
             }
 
@@ -255,8 +258,6 @@ void OtaManager::ota_task()
                 if (s == OtaStatus::IDLE || s == OtaStatus::FAILED) {
                     set_status(OtaStatus::MANIFEST_FETCH);
                 }
-                // Clear the start bit
-                deps_.task_scheduler.task_notify_wait(0, OTA_START_BIT, &notifications, 0);
             }
         }
 

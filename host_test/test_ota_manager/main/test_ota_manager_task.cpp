@@ -381,3 +381,62 @@ TEST_F(OtaManagerTaskTest, CancelOtaTransitionsToIdle)
 
     EXPECT_EQ(sut.get_status(), OtaStatus::IDLE);
 }
+
+TEST_F(OtaManagerTaskTest, CancelThenStartOtaSucceedsWithoutStaleCancelBit)
+{
+    // 1. Prepare Data
+    auto [manifest_json, manifest] = create_standard_manifest();
+
+    esp_app_desc_t running_app = {};
+    strncpy(running_app.version, "1.0.0", sizeof(running_app.version));
+
+    // 2. Setup Mocks
+    EXPECT_CALL(mock_http_client, fetch(config.manifest_url, _, _))
+        .WillRepeatedly(DoAll(SetArgReferee<1>(manifest_json), Return(ESP_OK)));
+
+    EXPECT_CALL(mock_manifest_parser, parse(manifest_json)).WillRepeatedly(Return(manifest));
+    EXPECT_CALL(mock_system, get_running_app_desc()).WillRepeatedly(Return(&running_app));
+    EXPECT_CALL(mock_ota_session, is_active()).WillRepeatedly(Return(true));
+    EXPECT_CALL(mock_ota_session, begin(::testing::_)).WillRepeatedly(Return(ESP_OK));
+
+    EXPECT_CALL(mock_ota_session, perform()).WillRepeatedly(testing::Invoke([]() {
+        vTaskDelay(pdMS_TO_TICKS(50));
+        return ESP_ERR_HTTPS_OTA_IN_PROGRESS;
+    }));
+
+    EXPECT_CALL(mock_ota_session, abort()).Times(::testing::AtLeast(1));
+
+    // 3. Start first OTA session
+    ASSERT_TRUE(sut.init(config));
+    ASSERT_TRUE(sut.start_ota());
+
+    int timeout_ms = 500;
+    int elapsed_ms = 0;
+    while (sut.get_status() != OtaStatus::DOWNLOADING && elapsed_ms < timeout_ms) {
+        vTaskDelay(pdMS_TO_TICKS(10));
+        elapsed_ms += 10;
+    }
+    ASSERT_EQ(sut.get_status(), OtaStatus::DOWNLOADING);
+
+    // 4. Cancel the session
+    sut.cancel_ota();
+
+    elapsed_ms = 0;
+    while (sut.get_status() != OtaStatus::IDLE && elapsed_ms < timeout_ms) {
+        vTaskDelay(pdMS_TO_TICKS(10));
+        elapsed_ms += 10;
+    }
+    EXPECT_EQ(sut.get_status(), OtaStatus::IDLE);
+
+    // 5. Start a second OTA session immediately without recreating the task
+    ASSERT_TRUE(sut.start_ota());
+
+    elapsed_ms = 0;
+    while (sut.get_status() != OtaStatus::DOWNLOADING && elapsed_ms < timeout_ms) {
+        vTaskDelay(pdMS_TO_TICKS(10));
+        elapsed_ms += 10;
+    }
+    // Verify that the second session reaches DOWNLOADING and was not killed by stale cancel bits
+    EXPECT_EQ(sut.get_status(), OtaStatus::DOWNLOADING);
+}
+
